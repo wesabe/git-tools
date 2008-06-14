@@ -77,7 +77,7 @@ payload = {
         :name => commit.author.name, 
         :email => commit.author.email
       }, 
-      :diffstat => repo.git.diff({:stat => true}, "#{commit.id}~..#{commit.id}")
+      :diffstat => repo.git.diff({:stat => true}, "#{commit.id}~1..#{commit.id}")
     }
     next m
   }, 
