@@ -31,6 +31,6 @@ else
   echo
   echo "Existing Git Repo?"
   echo "  cd existing_git_repo"
-  echo "  git remove add origin git@$hostname:$dir"
+  echo "  git remote add origin git@$hostname:$dir"
   echo "  git push origin master"
 fi
