@@ -93,6 +93,7 @@ puts "Posting #{commits.first.id_abbrev}..#{commits.last.id_abbrev} to web hooks
 
 puts "`- no web hooks! Set hooks.uris=URI[,URI[,URI...]] using git-config" if uris.empty?
 
+failures = 0
 uris.each do |uri|
   uri.chomp!
   puts "`- #{uri}"
@@ -114,8 +115,20 @@ uris.each do |uri|
     
     response = http.request(request)
     
-    puts "  `- ok (#{response.code})"
+    case response.code.to_i
+    when 200
+      puts "  `- ok (#{response.code})"
+    when 300..399
+      puts "  `- redirect (#{response.code})"
+    else
+      failures += 1
+      puts "  `- failed (#{response.code})"
+      $stderr.puts response.body
+    end
   rescue Object => e
-    puts "  `- failed posting: #{e.message}"
+    failures += 1
+    puts "  `- exception while posting: #{e.message}"
   end
 end
+
+exit failures
