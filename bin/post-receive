@@ -28,7 +28,7 @@ end
 
 class Grit::Repo
   def name
-    File.basename(bare ? path : File.expand_path("#{path}/.."))
+    File.basename(bare ? path : File.expand_path("#{path}/..")).sub(/\.git$/, '')
   end
   
   def config
