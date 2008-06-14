@@ -115,17 +115,21 @@ uris.each do |uri|
     request = Net::HTTP::Post.new(uri.path)
     request.set_form_data('payload' => payload)
     
-    response = http.request(request)
-    
-    case response.code.to_i
-    when 200
-      puts "  `- ok (#{response.code})"
-    when 300..399
-      puts "  `- redirect (#{response.code})"
+    if ARGV[0] == '--dry-run'
+      puts "  `- request not issued (dry run)"
     else
-      failures += 1
-      puts "  `- failed (#{response.code})"
-      $stderr.puts response.body
+      response = http.request(request)
+    
+      case response.code.to_i
+      when 200
+        puts "  `- ok (#{response.code})"
+      when 300..399
+        puts "  `- redirect (#{response.code})"
+      else
+        failures += 1
+        puts "  `- failed (#{response.code})"
+        $stderr.puts response.body
+      end
     end
   rescue Object => e
     failures += 1
