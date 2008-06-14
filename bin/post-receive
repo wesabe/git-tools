@@ -108,7 +108,7 @@ $stderr.puts "`- no web hooks! Set hooks.uris=URI[,URI[,URI...]] using git-confi
 failures = 0
 uris.each do |uri|
   uri.chomp!
-  puts "`- #{uri}"
+  puts "`- #{uri}" if verbose?
   begin
     uri = URI.parse(uri)
     if puri = ENV["#{uri.scheme}_proxy"]
