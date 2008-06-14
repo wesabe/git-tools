@@ -89,6 +89,8 @@ payload = {
 
 uris = repo.config['hooks.uris'].split(',')
 
+puts "payload=#{payload}"
+puts
 puts "Posting #{commits.first.id_abbrev}..#{commits.last.id_abbrev} to web hooks"
 
 puts "`- no web hooks! Set hooks.uris=URI[,URI[,URI...]] using git-config" if uris.empty?
