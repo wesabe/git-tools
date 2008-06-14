@@ -1,0 +1,121 @@
+#!/usr/bin/env ruby
+# This script is run after receive-pack has accepted a pack and the
+# repository has been updated.  It is passed arguments in through stdin
+# in the form
+#  <oldrev> <newrev> <refname>
+# For example:
+#  aa453216d1b3e49e7f6f98441fa56946ddcd6a20 68f7abf4e6f922807889f52bc043ecd31b79f814 refs/heads/master
+#
+
+require 'rubygems'
+require 'grit'
+require 'json'
+require 'net/https'
+require 'uri'
+require 'time'
+
+##
+## Grit extensions
+##
+
+class Grit::Repo
+  def name
+    File.basename(bare ? path : File.expand_path("#{path}/.."))
+  end
+  
+  def config
+    @config ||= Grit::Config.new(self)
+  end
+end
+
+class Grit::Config
+  attr_reader :repo
+  
+  def initialize(repo)
+    @repo = repo
+  end
+  
+  def git
+    repo.git
+  end
+  
+  def [](name)
+    git.config({}, "--get #{name}")
+  end
+  
+  def []=(name, value)
+    git.config({}, "--replace-all #{name} #{value}")
+  end
+  
+  def delete(name)
+    git.config({}, "--unset #{name}")
+  end
+end
+
+
+before, after, ref = STDIN.read.split(/\s+/)
+repo = Grit::Repo.new(Dir.pwd)
+
+raw_commits = repo.git.rev_list({:pretty => 'raw'}, "#{before}..#{after}")
+commits = Grit::Commit.list_from_string(repo, raw_commits)
+
+commit_uri_template = repo.config['uris.commit'] || ''
+project_uri_template = repo.config['uris.project'] || ''
+
+payload = {
+  :before => before, 
+  :after => after, 
+  :ref => ref, 
+  :commits => commits.inject({}) { |m, commit|
+    m[commit.id] = {
+      :id => commit.id, 
+      :id_abbrev => commit.id_abbrev, 
+      :message => commit.message, 
+      :timestamp => commit.committed_date.xmlschema, 
+      :url => commit_uri_template.gsub('%name%', repo.name).gsub('%id%', commit.id), 
+      :author => {
+        :name => commit.author.name, 
+        :email => commit.author.email
+      }, 
+      :diffstat => repo.git.diff({:stat => true}, "#{commit.id}~..#{commit.id}")
+    }
+    next m
+  }, 
+  :repository => {
+    :name => repo.name, 
+    :url => project_uri_template.gsub('%name%', repo.name)
+  }
+}.to_json
+
+uris = repo.config['hooks.uris'].split(',')
+
+puts "Posting #{commits.first.id_abbrev}..#{commits.last.id_abbrev} to web hooks"
+
+puts "`- no web hooks! Set hooks.uris=URI[,URI[,URI...]] using git-config" if uris.empty?
+
+uris.each do |uri|
+  uri.chomp!
+  puts "`- #{uri}"
+  begin
+    uri = URI.parse(uri)
+    if puri = ENV["#{uri.scheme}_proxy"]
+      puri = URI.parse(puri)
+      klass = Net::HTTP::Proxy(puri.host, puri.port, puri.user, puri.password)
+    else
+      klass = Net::HTTP
+    end
+    
+    http = klass.new(uri.host, uri.port)
+    http.use_ssl = uri.scheme=='https'
+    http.verify_mode = OpenSSL::SSL::VERIFY_NONE
+    
+    request = Net::HTTP::Post.new(uri.path)
+    request.set_form_data('payload' => payload)
+    
+    response = http.request(request)
+    
+    puts "  `- ok (#{response.code})"
+  rescue Object => e
+    puts "  `- failed posting: #{e.message}"
+  end
+end
