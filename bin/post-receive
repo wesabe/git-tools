@@ -14,6 +14,14 @@ require 'net/https'
 require 'uri'
 require 'time'
 
+def verbose?
+  dry_run? || ARGV.include?('-v') || ARGV.include?('--verbose')
+end
+
+def dry_run?
+  ARGV.include?('--dry-run')
+end
+
 ##
 ## Grit extensions
 ##
@@ -89,11 +97,13 @@ payload = {
 
 uris = repo.config['hooks.uris'].split(',')
 
-puts "payload=#{payload}"
-puts
-puts "Posting #{commits.first.id_abbrev}..#{commits.last.id_abbrev} to web hooks"
+if verbose?
+  puts "payload=#{payload}"
+  puts
+  puts "Posting #{commits.first.id_abbrev}..#{commits.last.id_abbrev} to web hooks"
+end
 
-puts "`- no web hooks! Set hooks.uris=URI[,URI[,URI...]] using git-config" if uris.empty?
+$stderr.puts "`- no web hooks! Set hooks.uris=URI[,URI[,URI...]] using git-config" if uris.empty?
 
 failures = 0
 uris.each do |uri|
@@ -115,25 +125,25 @@ uris.each do |uri|
     request = Net::HTTP::Post.new(uri.path)
     request.set_form_data('payload' => payload)
     
-    if ARGV[0] == '--dry-run'
+    if dry_run?
       puts "  `- request not issued (dry run)"
     else
       response = http.request(request)
     
       case response.code.to_i
       when 200
-        puts "  `- ok (#{response.code})"
+        puts "  `- ok (#{response.code})" if verbose?
       when 300..399
-        puts "  `- redirect (#{response.code})"
+        puts "  `- redirect (#{response.code})" if verbose?
       else
         failures += 1
-        puts "  `- failed (#{response.code})"
+        puts "  `- failed (#{response.code})" if verbose?
         $stderr.puts response.body
       end
     end
   rescue Object => e
     failures += 1
-    puts "  `- exception while posting: #{e.message}"
+    $stderr.puts "  `- exception while posting: #{e.message}"
   end
 end
 
