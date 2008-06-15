@@ -1,0 +1,191 @@
+#!/bin/bash
+# 
+# Converts all or part of a subversion repository to a git repository 
+# suitable for hosting on a server (a bare repo).
+# 
+# This script is not meant to handle every case, and actually only 
+# converts subversion repos that don't have branches or tags, or they 
+# simply don't matter.
+# 
+# If you're in a svn or git-svn project, it'll figure out the svn url 
+# to use, otherwise it'll just ask you.
+# 
+
+git_root=$PWD
+path=""
+
+until [[ -d $git_root/.git || "$git_root" == "/" ]]; do
+  path=`basename $git_root`/$path
+  git_root=`dirname $git_root`
+done
+
+if [[ "$git_root" = "/" ]]; then
+  # not in a git repo
+  git_root=""
+  path=""
+else
+  name=`basename $git_root`
+fi
+
+# figure out the svn url to use
+svn_root=`git svn info 2>/dev/null | grep URL | cut -d' ' -f 2`
+if [[ -z "$svn_root" ]]; then
+  # try svn
+  svn_root=`svn info 2>/dev/null | grep URL | cut -d' ' -f 2`
+fi
+
+if [[ -z "$svn_root" ]]; then
+  echo -n "What URL should git-svn use to convert? "
+  read svn_url
+  name=`basename $svn_url`
+  echo
+else
+  svn_root="${svn_root%/}"
+  svn_url="${svn_root}/${path}"
+  svn_url="${svn_url%/}"
+  
+  # account for being in a subdirectory
+  if [[ "$svn_root" != "$svn_url" ]]; then
+    echo "You seem to be running this in a subdirectory of a Subversion checkout. Do you want:"
+    echo " 1) the root of this project ($svn_root)"
+    echo " 2) the directory you're in ($svn_url)"
+    echo
+    echo -n "Your choice [1-2]: "
+    read choice
+    
+    case $choice in
+    1)
+      svn_url=$svn_root
+      ;;
+    2)
+      svn_url=$svn_url
+      ;;
+    *)
+      echo "huh?"
+      exit 1
+    esac
+    
+    echo "Continuing with $svn_url"
+    echo
+  fi
+fi
+
+if [[ -z "$name" ]]; then
+  name=`basename $svn_url`
+fi
+
+# get the authors
+authors_base=/tmp/${name}-authors
+authors_svn=$authors_base-svn
+authors_file=$authors_base-git
+
+cd $git_root
+if [[ -f $authors_file ]]; then
+  # already got it, just leave it alone
+  echo "Using existing authors file:"
+  echo
+  cat $authors_file
+  echo
+else
+  echo "Listing authors for this project..."
+  
+  if [[ -z $git_root ]]; then
+    # go through contortions to get the svn authors
+    svn log $svn_url 2>/dev/null | \
+      awk -F '|' '{ if (/^r[0-9]+ /) print($2) }' | \
+      sed 's/^ //g' | sed 's/ $//g' | \
+      sort | uniq > $authors_svn
+  else
+    # git-svn authors are much easier (and faster) to get
+    git log --pretty=format:"%an" 2>/dev/null | sort | uniq > $authors_svn
+  fi
+  
+  if [[ $? != 0 ]]; then
+    echo
+    echo "Couldn't find authors!"
+    exit 1
+  fi
+  
+  echo "Found these authors:"
+  echo
+  cat $authors_svn
+  echo
+  echo "Please provide real names for them like so:"
+  echo "  smith = John Smith <jsmith@example.com>"
+  echo
+  echo -n "Press enter when you're ready..."
+  read tmp # wait for newline
+  ${EDITOR:-"vim"} $authors_svn
+  mv $authors_svn $authors_file
+fi
+
+# do work in a temp directory
+cd /tmp
+
+echo
+if [[ -d ${name}_tmp ]]; then
+  echo "Skipping existing git-svn repository (/tmp/${name}_tmp)"
+else
+  echo "Cloning repository history..."
+  rm -rf ${name}_tmp
+  git svn clone --no-metadata --authors-file=$authors_file $svn_url ${name}_tmp
+  if [[ $? != 0 ]]; then
+    echo
+    echo "Error while cloning repository history! Maybe the server can't be reached?"
+    echo "Leaving /tmp/${name}_tmp directory for you to clean up"
+    exit 1
+  fi
+fi
+
+echo
+if [[ -d ${name}.git ]]; then
+  echo "Skipping existing bare repo (/tmp/${name}.git)"
+else
+  echo "Creating bare repository..."
+  rm -rf ${name}.git
+  git --bare clone ${name}_tmp ${name}.git
+  if [[ $? != 0 ]]; then
+    echo
+    echo "Error creating bare repository. Maybe a permissions or disk space problem?"
+    echo "Leaving /tmp/${name}_tmp and /tmp/${name}.git directories for you to clean up"
+    exit 1
+  fi
+fi
+
+# clean up tmp repo
+rm -rf ${name}_tmp
+
+# repack the new bare repo
+cd ${name}.git
+git gc --prune
+cd ..
+
+echo
+echo "For here or to go?"
+echo " 1) leave the bare repo, I'll put it in the right place"
+echo " 2) tar it up for me, please"
+echo
+echo -n "Your choice [1-2]: "
+read choice
+
+case $choice in
+1)
+  src=${name}.git
+  dest=`dirname $git_root`/${name}.git
+  mv $src $dest
+  echo
+  echo
+  echo "alright, you can find it at $dest"
+  ;;
+2)
+  tar_file=`dirname $git_root`/${name}.tgz
+  tar cvfz $tar_file ${name}.git
+  rm -rf ${name}.git
+  echo
+  echo
+  echo "alright, you can find it at $tar_file"
+  ;;
+*)
+  echo "huh?"
+  exit 1
+esac
