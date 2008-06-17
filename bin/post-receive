@@ -64,7 +64,8 @@ end
 before, after, ref = STDIN.read.split(/\s+/)
 repo = Grit::Repo.new(Dir.pwd)
 
-raw_commits = repo.git.rev_list({:pretty => 'raw'}, "#{before}..#{after}")
+range = (before =~ /^0+$/) ? after : "#{before}..#{after}"
+raw_commits = repo.git.rev_list({:pretty => 'raw'}, range)
 commits = Grit::Commit.list_from_string(repo, raw_commits)
 
 commit_uri_template = repo.config['uris.commit'] || ''
