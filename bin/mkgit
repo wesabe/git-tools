@@ -1,36 +1,40 @@
 #!/bin/bash
 
-if [[ "$USER" != "git" ]]; then
-  sudo -u git $0 $1
+if [ -z $1 ]; then
+  echo "Usage: mkgit <repo name>" 
 else
-
-  dir=$1.git
-  hostname=`hostname`
-  
-  if [[ -d ~git/$dir ]]; then
-    echo "Repo $dir already exists"
+  if [[ "$USER" != "git" ]]; then
+    sudo -u git $0 $1
   else
-    echo "Creating repo $dir"
-    cd /tmp
-    mkdir $dir && cd $dir
-    git --bare init
-    cd ..
-    mv $dir ~git
-  fi
+
+    dir=$1.git
+    hostname=`hostname`
   
-  echo
-  echo "Next steps:"
-  echo "  mkdir $1"
-  echo "  cd $1"
-  echo "  git init"
-  echo "  touch README"
-  echo "  git add README"
-  echo "  git commit -m 'first commit'"
-  echo "  git remote add origin git@$hostname:$dir"
-  echo "  git push origin master"
-  echo
-  echo "Existing Git Repo?"
-  echo "  cd existing_git_repo"
-  echo "  git remote add origin git@$hostname:$dir"
-  echo "  git push origin master"
+    if [[ -d ~git/$dir ]]; then
+      echo "Repo $dir already exists"
+    else
+      echo "Creating repo $dir"
+      cd /tmp
+      mkdir $dir && cd $dir
+      git --bare init
+      cd ..
+      mv $dir ~git
+    fi
+  
+    echo
+    echo "Next steps:"
+    echo "  mkdir $1"
+    echo "  cd $1"
+    echo "  git init"
+    echo "  touch README"
+    echo "  git add README"
+    echo "  git commit -m 'first commit'"
+    echo "  git remote add origin git@$hostname:$dir"
+    echo "  git push origin master"
+    echo
+    echo "Existing Git Repo?"
+    echo "  cd existing_git_repo"
+    echo "  git remote add origin git@$hostname:$dir"
+    echo "  git push origin master"
+  fi
 fi
