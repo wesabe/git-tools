@@ -86,7 +86,8 @@ payload = {
         :name => commit.author.name, 
         :email => commit.author.email
       }, 
-      :diffstat => repo.git.diff({:stat => true}, "#{commit.id}~1..#{commit.id}")
+      :diffstat => repo.git.send('diff-tree', {:stat => true}, 
+        commit.parents.empty? ? "--root #{commit.id}" : "#{commit.id}~1..#{commit.id}")
     }
     next m
   }, 
