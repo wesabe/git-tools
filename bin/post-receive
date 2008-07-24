@@ -60,6 +60,36 @@ class Grit::Config
   end
 end
 
+class Grit::Commit
+  def added_paths
+    paths_with_status('A')
+  end
+  
+  def modified_paths
+    paths_with_status('M')
+  end
+  
+  def deleted_paths
+    paths_with_status('D')
+  end
+  
+  protected
+  
+  def paths_with_status(s)
+    diff_name_status.inject([]) do |paths, (status, path)|
+      paths << path if status == s
+      paths
+    end
+  end
+  
+  def diff_name_status
+    @diff_name_status ||= begin
+      raw = @repo.git.send('diff-tree', {'r' => true, 'name-status' => true}, 
+              parents.empty? ? "--root #{id}" : "#{id}~1..#{id}")
+      raw.to_a.map {|line| line.chomp.split(/\s+/, 2)}
+    end
+  end
+end
 
 before, after, ref = STDIN.read.split(/\s+/)
 repo = Grit::Repo.new(Dir.pwd)
@@ -75,8 +105,9 @@ payload = {
   :before => before, 
   :after => after, 
   :ref => ref, 
-  :commits => commits.inject({}) { |m, commit|
-    m[commit.id] = {
+  :commits => commits.map { |commit|
+    
+    {
       :id => commit.id, 
       :id_abbrev => commit.id_abbrev, 
       :message => commit.message, 
@@ -86,10 +117,12 @@ payload = {
         :name => commit.author.name, 
         :email => commit.author.email
       }, 
+      :added => commit.added_paths, 
+      :modified => commit.modified_paths, 
+      :deleted => commit.deleted_paths, 
       :diffstat => repo.git.send('diff-tree', {:stat => true}, 
         commit.parents.empty? ? "--root #{commit.id}" : "#{commit.id}~1..#{commit.id}")
     }
-    next m
   }, 
   :repository => {
     :name => repo.name, 
