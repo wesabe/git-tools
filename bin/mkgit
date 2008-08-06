@@ -1,26 +1,35 @@
 #!/bin/bash
+bindir=`dirname $0`
+cd $bindir
+bindir=$PWD
+
+if [ -z "$GIT_USER" ]; then
+  GIT_USER="git"
+fi
+
+GIT_HOME=`dirname $HOME`/$GIT_USER
 
 if [ -z $1 ]; then
   echo "Usage: mkgit <repo name>" 
 else
-  if [[ "$USER" != "git" ]]; then
-    sudo -u git $0 $1
+  if [[ "$USER" != "$GIT_USER" ]]; then
+    sudo -u $GIT_USER $0 $1
   else
-
     dir=$1.git
     hostname=`hostname`
-  
-    if [[ -d ~git/$dir ]]; then
+    
+    if [[ -d $GIT_HOME/$dir ]]; then
       echo "Repo $dir already exists"
     else
-      echo "Creating repo $dir"
+      echo "Creating repo $GIT_HOME/$dir"
       cd /tmp
       mkdir $dir && cd $dir
       git --bare init
+      rm hooks/post-receive && ln -s $bindir/post-receive hooks/post-receive
       cd ..
-      mv $dir ~git
+      mv $dir $GIT_HOME
     fi
-  
+    
     echo
     echo "Next steps:"
     echo "  mkdir $1"
@@ -29,12 +38,12 @@ else
     echo "  touch README"
     echo "  git add README"
     echo "  git commit -m 'first commit'"
-    echo "  git remote add origin git@$hostname:$dir"
+    echo "  git remote add origin $GIT_USER@$hostname:$dir"
     echo "  git push origin master"
     echo
     echo "Existing Git Repo?"
     echo "  cd existing_git_repo"
-    echo "  git remote add origin git@$hostname:$dir"
+    echo "  git remote add origin $GIT_USER@$hostname:$dir"
     echo "  git push origin master"
   fi
 fi
