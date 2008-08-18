@@ -1,8 +1,17 @@
 #!/bin/bash
 bindir=`dirname $0`
+binfile=`basename $0`
 cd $bindir
 bindir=$PWD
 
+# account for it being run through a symlink
+linkpath=`readlink $bindir/$binfile`
+
+if [[ "$linkpath" != "" ]]; then
+  bindir=`dirname $linkpath`
+fi
+
+# set the default user to "git"
 if [ -z "$GIT_USER" ]; then
   GIT_USER="git"
 fi
@@ -10,7 +19,7 @@ fi
 GIT_HOME=`dirname $HOME`/$GIT_USER
 
 if [ -z $1 ]; then
-  echo "Usage: mkgit <repo name>" 
+  echo "Usage: $binfile <repo name>" 
 else
   if [[ "$USER" != "$GIT_USER" ]]; then
     sudo -u $GIT_USER $0 $1
