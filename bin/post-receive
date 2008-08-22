@@ -48,15 +48,15 @@ class Grit::Config
   end
   
   def [](name)
-    git.config({}, "--get #{name}")
+    git.config({:get => true}, name)
   end
   
   def []=(name, value)
-    git.config({}, "--replace-all #{name} #{value}")
+    git.config({:replace_all => true}, name, value)
   end
   
   def delete(name)
-    git.config({}, "--unset #{name}")
+    git.config({:unset => true}, name)
   end
 end
 
@@ -73,6 +73,18 @@ class Grit::Commit
     paths_with_status('D')
   end
   
+  def diff_tree(options={})
+    options = options.dup
+    
+    if parents.empty?
+      options[:root] = true
+      args = [id]
+    else
+      args = ["#{id}~1..#{id}"]
+    end
+    @repo.git.send('diff-tree', options, *args)
+  end
+  
   protected
   
   def paths_with_status(s)
@@ -84,8 +96,7 @@ class Grit::Commit
   
   def diff_name_status
     @diff_name_status ||= begin
-      raw = @repo.git.send('diff-tree', {'r' => true, 'name-status' => true}, 
-              parents.empty? ? "--root #{id}" : "#{id}~1..#{id}")
+      raw = diff_tree(:r => true, :name_status => true)
       raw.to_a.map {|line| line.chomp.split(/\s+/, 2)}
     end
   end
@@ -120,8 +131,7 @@ payload = {
       :added => commit.added_paths, 
       :modified => commit.modified_paths, 
       :deleted => commit.deleted_paths, 
-      :diffstat => repo.git.send('diff-tree', {:stat => true}, 
-        commit.parents.empty? ? "--root #{commit.id}" : "#{commit.id}~1..#{commit.id}")
+      :diffstat => commit.diff_tree(:stat => true)
     }
   }, 
   :repository => {
