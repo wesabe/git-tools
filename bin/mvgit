@@ -138,6 +138,36 @@ else
 fi
 
 echo
+echo "Would you like to make this a working copy?"
+echo " 1) Yes, I'm going to create the remote repo another way (e.g. Gitosis)"
+echo " 2) No, I want a bare repo that I can use as my remote repo"
+echo
+echo -n "Your choice [1-2]: "
+read choice
+
+case $choice in
+1)
+  src=${name}_tmp
+  dest=`dirname $git_root`/${name}-git-version
+  mv $src $dest
+  # repack the new repo
+  cd $dest
+  git gc --prune
+  echo
+  echo
+  echo "alright, you can find it at $dest"
+  exit
+  ;;
+2)
+  echo
+  echo
+  ;;
+*)
+  echo "huh?"
+  exit 1
+esac
+
+echo
 if [[ -d ${name}.git ]]; then
   echo "Skipping existing bare repo (/tmp/${name}.git)"
 else
