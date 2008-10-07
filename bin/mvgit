@@ -19,7 +19,7 @@ until [[ -d $git_root/.git || "$git_root" == "/" ]]; do
   git_root=`dirname $git_root`
 done
 
-if [[ "$git_root" = "/" ]]; then
+if [[ "$git_root" == "/" ]]; then
   # not in a git repo
   git_root=""
   path=""
@@ -28,9 +28,11 @@ else
 fi
 
 # figure out the svn url to use
+echo "Attempting to figure out the url from git-svn info..."
 svn_root=`git svn info 2>/dev/null | grep URL | cut -d' ' -f 2`
 if [[ -z "$svn_root" ]]; then
   # try svn
+  echo "Attempting to figure out url from svn info..."
   svn_root=`svn info 2>/dev/null | grep URL | cut -d' ' -f 2`
 fi
 
