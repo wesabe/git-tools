@@ -1,0 +1,195 @@
+#!/usr/bin/env ruby
+# This script is run after receive-pack has accepted a pack and the
+# repository has been updated.  It is passed arguments in through stdin
+# in the form
+#  <oldrev> <newrev> <refname>
+# For example:
+#  aa453216d1b3e49e7f6f98441fa56946ddcd6a20 68f7abf4e6f922807889f52bc043ecd31b79f814 refs/heads/master
+#
+
+require 'rubygems'
+require 'grit'
+require 'json'
+require 'net/https'
+require 'uri'
+require 'time'
+
+def verbose?
+  dry_run? || ARGV.include?('-v') || ARGV.include?('--verbose')
+end
+
+def dry_run?
+  ARGV.include?('--dry-run')
+end
+
+##
+## Grit extensions
+##
+
+class Grit::Repo
+  def name
+    File.basename(bare ? path : File.expand_path("#{path}/..")).sub(/\.git$/, '')
+  end
+  
+  def config
+    @config ||= Grit::Config.new(self)
+  end
+end
+
+class Grit::Config
+  attr_reader :repo
+  
+  def initialize(repo)
+    @repo = repo
+  end
+  
+  def git
+    repo.git
+  end
+  
+  def [](name)
+    git.config({:get => true}, name)
+  end
+  
+  def []=(name, value)
+    git.config({:replace_all => true}, name, value)
+  end
+  
+  def delete(name)
+    git.config({:unset => true}, name)
+  end
+end
+
+class Grit::Commit
+  def added_paths
+    paths_with_status('A')
+  end
+  
+  def modified_paths
+    paths_with_status('M')
+  end
+  
+  def deleted_paths
+    paths_with_status('D')
+  end
+  
+  def diff_tree(options={})
+    options = options.dup
+    
+    if parents.empty?
+      options[:root] = true
+      args = [id]
+    else
+      args = ["#{id}~1..#{id}"]
+    end
+    @repo.git.send('diff-tree', options, *args)
+  end
+  
+  protected
+  
+  def paths_with_status(s)
+    diff_name_status.inject([]) do |paths, (status, path)|
+      paths << path if status == s
+      paths
+    end
+  end
+  
+  def diff_name_status
+    @diff_name_status ||= begin
+      raw = diff_tree(:r => true, :name_status => true)
+      raw.to_a.map {|line| line.chomp.split(/\s+/, 2)}
+    end
+  end
+end
+
+before, after, ref = STDIN.read.split(/\s+/)
+repo = Grit::Repo.new(Dir.pwd)
+
+range = (before =~ /^0+$/) ? after : "#{before}..#{after}"
+raw_commits = repo.git.rev_list({:pretty => 'raw'}, range)
+commits = Grit::Commit.list_from_string(repo, raw_commits)
+
+commit_uri_template = repo.config['uris.commit'] || ''
+project_uri_template = repo.config['uris.project'] || ''
+
+payload = {
+  :before => before, 
+  :after => after, 
+  :ref => ref, 
+  :commits => commits.map { |commit|
+    
+    {
+      :id => commit.id, 
+      :id_abbrev => commit.id_abbrev, 
+      :message => commit.message, 
+      :timestamp => commit.committed_date.xmlschema, 
+      :url => commit_uri_template.gsub('%name%', repo.name).gsub('%id%', commit.id), 
+      :author => {
+        :name => commit.author.name, 
+        :email => commit.author.email
+      }, 
+      :added => commit.added_paths, 
+      :modified => commit.modified_paths, 
+      :deleted => commit.deleted_paths, 
+      :diffstat => commit.diff_tree(:stat => true)
+    }
+  }, 
+  :repository => {
+    :name => repo.name, 
+    :url => project_uri_template.gsub('%name%', repo.name)
+  }
+}.to_json
+
+uris = repo.config['hooks.uris'].split(',')
+
+if verbose?
+  puts "payload=#{payload}"
+  puts
+  puts "Posting #{commits.first.id_abbrev}..#{commits.last.id_abbrev} to web hooks"
+end
+
+$stderr.puts "`- no web hooks! Set hooks.uris=URI[,URI[,URI...]] using git-config" if uris.empty?
+
+failures = 0
+uris.each do |uri|
+  uri.chomp!
+  puts "`- #{uri}" if verbose?
+  begin
+    uri = URI.parse(uri)
+    if puri = ENV["#{uri.scheme}_proxy"]
+      puri = URI.parse(puri)
+      klass = Net::HTTP::Proxy(puri.host, puri.port, puri.user, puri.password)
+    else
+      klass = Net::HTTP
+    end
+    
+    http = klass.new(uri.host, uri.port)
+    http.use_ssl = uri.scheme=='https'
+    http.verify_mode = OpenSSL::SSL::VERIFY_NONE
+    
+    request = Net::HTTP::Post.new(uri.path)
+    request.set_form_data('payload' => payload)
+    
+    if dry_run?
+      puts "  `- request not issued (dry run)"
+    else
+      response = http.request(request)
+    
+      case response.code.to_i
+      when 200
+        puts "  `- ok (#{response.code})" if verbose?
+      when 300..399
+        puts "  `- redirect (#{response.code})" if verbose?
+      else
+        failures += 1
+        puts "  `- failed (#{response.code})" if verbose?
+        $stderr.puts response.body
+      end
+    end
+  rescue Object => e
+    failures += 1
+    $stderr.puts "  `- exception while posting: #{e.message}"
+  end
+end
+
+exit failures
