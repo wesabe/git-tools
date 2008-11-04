@@ -1,0 +1,2 @@
+# tells the redmine-update daemon script to fetch new changesets for redmine
+touch /tmp/update-redmine-changesets
