@@ -1,11 +1,18 @@
 #!/bin/bash
-bindir=`dirname $0`
+linkbin=`readlink $0`
+if [[ -z "$linkbin" ]]; then
+  this=$0
+else
+  this=$linkbin
+fi
+bindir=`dirname $this`
 
 # read STDIN sent to post-receive
 read COMMIT_FROM COMMIT_TO COMMIT_REF
 
 for script in $bindir/post-receive.d/*; do
   if [[ -x $script ]]; then
+    # echo $script $*
     echo $COMMIT_FROM $COMMIT_TO $COMMIT_REF | $script $*
   fi
 done
