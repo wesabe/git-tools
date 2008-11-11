@@ -1,0 +1,26 @@
+#!/bin/sh
+#
+# A precommit hook that checks the files in the index for trailing whitespace.
+# If it finds any, it will automatically strip the whitespace from those files
+# and update the index before the commit takes place.
+
+if git rev-parse --verify HEAD > /dev/null
+then
+	against=HEAD
+else
+	# Initial commit: diff against an empty tree object
+	against=0000000000000000000000000000000000000000
+fi
+
+old_IFS=$IFS
+IFS=$'\n'
+ 
+for FILE in `git diff-index --check --cached $against 2>&1 | sed '/^[\*\+]/d' | sed 's/:.*//' | uniq` ; do 
+  sed -ie 's/[[:space:]]*$//' $FILE
+  rm $FILE"e"
+  git add $FILE
+done
+
+IFS=$old_IFS
+
+exit 0
