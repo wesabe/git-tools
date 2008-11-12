@@ -1,0 +1,31 @@
+#!/bin/sh
+CURRENT=`git branch | grep "\*" | cut -d' ' -f2`
+
+if [[ "$CURRENT" != "master" ]]; then
+  echo "+ git checkout master"
+  git checkout master
+fi
+
+git svn info >/dev/null 2>/dev/null
+if [[ $? == 0 ]]; then
+  TYPE="git-svn"
+else
+  TYPE="git"
+fi
+
+if [[ "$TYPE" == "git-svn" ]]; then
+  echo "+ git svn rebase"
+  git svn rebase
+else
+  echo "+ git fetch origin"
+  git fetch origin
+  echo "+ git rebase origin/master"
+  git rebase origin/master
+fi
+
+if [[ "$CURRENT" != "master" ]]; then
+  echo "+ git checkout ${CURRENT}"
+  git checkout ${CURRENT}
+  echo "+ git rebase master"
+  git rebase master
+fi

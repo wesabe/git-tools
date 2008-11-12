@@ -1,0 +1,48 @@
+#!/bin/sh
+
+case "$1" in
+  -h|--help)
+    echo "usage: git-open BRANCH"
+    echo "Creates a new branch named BRANCH by forking master or, if"
+    echo "a branch has BRANCH in the name, checks that branch out."
+    echo ""
+    echo "Given these branches:"
+    echo ""
+    echo "  sh-$ git branch"
+    echo "  * master"
+    echo "    performance"
+    echo ""
+    echo "Creating a new branch"
+    echo ""
+    echo "  sh-$ git open test"
+    echo "  + git checkout -b test"
+    echo "  Switched to a new branch \"test\""
+    echo ""
+    echo "Switching to an existing branch"
+    echo ""
+    echo "  sh-$ git open perf"
+    echo "  + git checkout performance"
+    echo "  Switched to branch \"performance\""
+    exit 0
+    ;;
+esac
+
+CURRENT=`git branch | grep -m 1 "\*" | cut -d' ' -f2`
+TARGET=`git branch | grep -m 1 "$1" | perl -pe 's/[\s\*]//g'`
+
+if [[ "$CURRENT" != "master" ]]; then
+  echo "+ git checkout master"
+  git checkout master
+fi
+
+if [[ "$TARGET" == "master" ]]; then
+  exit
+fi
+
+if [[ -z "$TARGET" ]]; then
+  echo "+ git checkout -b $1"
+  git checkout -b $1
+else
+  echo "+ git checkout $TARGET"
+  git checkout $TARGET
+fi

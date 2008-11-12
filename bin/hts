@@ -1,0 +1,8 @@
+#!/bin/sh
+if [ -e test ] && [ -e spec ]; then
+  hack && rake test spec && ship
+elif [ -e spec ]; then
+  hack && rake spec && ship
+else
+  hack && ship;
+fi

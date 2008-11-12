@@ -1,0 +1,52 @@
+#!/bin/sh
+
+args="-d"
+CURRENT=`git branch | grep "\*" | cut -d' ' -f2`
+
+while [ $# -gt 0 ]; do
+  case "$1" in
+    -f|-D|--force)
+      args=${args/-d/-D}
+      ;;
+    -h|--help)
+      echo "usage: git-close [-f|--force] [BRANCH]"
+      echo "Deletes the current branch or a branch named BRANCH."
+      echo ""
+      echo "Options"
+      echo "  -f  --force     Passes -D to git-branch, forcing the branch to be deleted."
+      echo ""
+      echo "If BRANCH is not provided, the current branch is used. If BRANCH is master,"
+      echo "exit with an error message."
+      exit 0
+      ;;
+    -*)
+      echo "Unknown command line flag $1"
+      exit 1
+      ;;
+    *)
+      BRANCH="$1"
+      ;;
+  esac
+  shift
+done
+
+# set a default value of the current branch
+echo ${BRANCH:=`git branch | grep "\*" | cut -d' ' -f2`} >/dev/null
+
+if [[ "$BRANCH" == "master" ]]; then
+  echo "Cowardly refusing to remove master branch"
+  exit 1
+fi
+
+if [[ "$BRANCH" == "$CURRENT" && "$CURRENT" != "master" ]]; then
+  echo "+ git checkout master"
+  git checkout master
+fi
+
+echo "+ git branch $args $BRANCH"
+git branch $args $BRANCH
+
+if [[ $? != 0 ]]; then
+  echo "+ git checkout $BRANCH"
+  git checkout $BRANCH
+fi
