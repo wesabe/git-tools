@@ -3,9 +3,9 @@
 require 'rubygems'
 require 'stomp'
 
-mq_server = `git config --system hooks.queueserver`.chomp
-mq_user   = `git config --system hooks.queueuser`.chomp
-mq_pass   = `git config --system hooks.queuepassword`.chomp
+mq_server = `git config hooks.queueserver`.chomp
+mq_user   = `git config hooks.queueuser`.chomp
+mq_pass   = `git config hooks.queuepassword`.chomp
 
 queue = Stomp::Client.open(mq_user, mq_pass, mq_server, 61613, true)
 queue.send("redmine-repo-update", File.basename(Dir.pwd))
