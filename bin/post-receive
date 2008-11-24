@@ -1,10 +1,16 @@
 #!/bin/bash
-linkbin=`readlink $0`
-if [[ -z "$linkbin" ]]; then
-  this=$0
-else
-  this=$linkbin
-fi
+this=$0
+while true; do
+  linkbin=`readlink $this`
+  if [[ -z "$linkbin" ]]; then
+    break
+  elif [[ "$this" == "$linkbin" ]]; then
+    break
+  else
+    this=$linkbin
+  fi
+done
+
 bindir=`dirname $this`
 
 # read STDIN sent to post-receive
