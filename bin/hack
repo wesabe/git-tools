@@ -1,12 +1,63 @@
 #!/bin/sh
 CURRENT=`git branch | grep "\*" | cut -d' ' -f2`
 
+# default settings
+explain=false
+verbose=true
+run=true
+
+printUsage() {
+  echo "usage: $0 [options]"
+  echo
+  echo "  -h  --help                  Show this message"
+  echo "  -v  --verbose               Show all commands before running them (default: on)"
+  echo "  -q  --quiet                 Don't display commands before running them (default: off)"
+  echo "  -e  --explain  --dry-run    Don't actually run commands (default: off)"
+  echo
+}
+
+for arg in "$@"; do
+  case $arg
+  in
+    -e | --explain | --dry-run)
+      explain=true
+      verbose=true
+      run=false
+      ;;
+    -v | --verbose)
+      verbose=true
+      ;;
+    -q | --quiet)
+      verbose=false
+      ;;
+    -h | --help)
+      printUsage
+      exit
+      ;;
+    *)
+      echo "$0: unrecognized parameter '$arg'"
+      printUsage
+      exit 1
+      ;;
+  esac
+done
+
+GIT=`which git`
+
+git() {
+  test "$verbose" = true && echo "+ git $@"
+  test "$run"     = true && eval "$GIT $@"
+}
+
+if [[ "$explain" == true ]]; then
+  echo "These are the commands that would be run:"
+fi
+
 if [[ "$CURRENT" != "master" ]]; then
-  echo "+ git checkout master"
   git checkout master
 fi
 
-git svn info >/dev/null 2>/dev/null
+$GIT svn info >/dev/null 2>/dev/null
 if [[ $? == 0 ]]; then
   TYPE="git-svn"
 else
@@ -14,18 +65,13 @@ else
 fi
 
 if [[ "$TYPE" == "git-svn" ]]; then
-  echo "+ git svn rebase"
   git svn rebase
 else
-  echo "+ git fetch origin"
   git fetch origin
-  echo "+ git rebase origin/master"
   git rebase origin/master
 fi
 
 if [[ "$CURRENT" != "master" ]]; then
-  echo "+ git checkout ${CURRENT}"
   git checkout ${CURRENT}
-  echo "+ git rebase master"
   git rebase master
 fi

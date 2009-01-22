@@ -1,12 +1,68 @@
 #!/bin/sh
 CURRENT=`git branch | grep "\*" | cut -d' ' -f2`
 
+# default settings
+explaining=false
+verbose=true
+run=true
+remote=origin
+
+printUsage() {
+  echo "usage: $0 [options] [remote]"
+  echo
+  echo "  -h  --help                  Show this message"
+  echo "  -v  --verbose               Show all commands before running them (default: on)"
+  echo "  -q  --quiet                 Don't display commands before running them (default: off)"
+  echo "  -e  --explain  --dry-run    Don't actually run commands (default: off)"
+  echo
+  echo "  remote                      Which remote we should push to (default: origin)"
+  echo
+}
+
+for arg in "$@"; do
+  case $arg
+  in
+    -e | --explain | --dry-run)
+      explain=true
+      verbose=true
+      run=false
+      ;;
+    -v | --verbose)
+      verbose=true
+      ;;
+    -q | --quiet)
+      verbose=false
+      ;;
+    -h | --help)
+      printUsage
+      exit
+      ;;
+    -*)
+      echo "$0: unrecognized parameter '$arg'"
+      printUsage
+      exit 1
+      ;;
+    *)
+      remote=$arg
+  esac
+done
+
+GIT=`which git`
+
+git() {
+  test "$verbose" = true && echo "+ git $@"
+  test "$run"     = true && eval "$GIT $@"
+}
+
+if [[ "$explain" == true ]]; then
+  echo "These are the commands that would be run:"
+fi
+
 if [[ "$CURRENT" != "master" ]]; then
-  echo "+ git checkout master"
   git checkout master
 fi
 
-git svn info >/dev/null 2>/dev/null
+$GIT svn info >/dev/null 2>/dev/null
 if [[ $? == 0 ]]; then
   TYPE="git-svn"
 else
@@ -14,23 +70,19 @@ else
 fi
 
 if [[ "$TYPE" == "git-svn" ]]; then
-  echo "+ git rebase ${CURRENT}"
   git rebase ${CURRENT}
-  echo "+ git svn dcommit"
   git svn dcommit
 else
-  echo "+ git merge ${CURRENT}"
-  git merge ${CURRENT}
-  echo "+ git push ${1:-origin} master"
-  git push ${1:-origin} master
+  if [[ "$CURRENT" != "master" ]]; then
+    git merge ${CURRENT}
+  fi
+  git push ${remote} master
 fi
 
 if [[ "$CURRENT" != "master" ]]; then
-  echo "+ git checkout ${CURRENT}"
   git checkout ${CURRENT}
 fi
 
 if [[ "$TYPE" == "git-svn" ]]; then
-  echo "+ git svn rebase"
   git svn rebase
 fi
