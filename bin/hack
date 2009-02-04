@@ -53,8 +53,22 @@ if [[ "$explain" == true ]]; then
   echo "These are the commands that would be run:"
 fi
 
-if [[ "$CURRENT" != "master" ]]; then
-  git checkout master
+REMOTE=`$GIT config branch.$CURRENT.remote`
+
+if [[ -z "$REMOTE" ]]; then
+  REMOTE=origin
+fi
+
+TRACK=`$GIT config branch.$CURRENT.merge`
+
+if [[ -z "$TRACK" ]]; then
+  TRACK=refs/heads/master
+fi
+
+TRACK_BRANCH=${TRACK/refs\/heads\//}
+
+if [[ "$CURRENT" != "$TRACK_BRANCH" ]]; then
+  git checkout $TRACK_BRANCH
 fi
 
 $GIT svn info >/dev/null 2>/dev/null
@@ -67,11 +81,11 @@ fi
 if [[ "$TYPE" == "git-svn" ]]; then
   git svn rebase
 else
-  git fetch origin
-  git rebase origin/master
+  git fetch $REMOTE
+  git rebase $REMOTE/$TRACK_BRANCH
 fi
 
-if [[ "$CURRENT" != "master" ]]; then
-  git checkout ${CURRENT}
-  git rebase master
+if [[ "$CURRENT" != "$TRACK_BRANCH" ]]; then
+  git checkout $CURRENT
+  git rebase $TRACK_BRANCH
 fi

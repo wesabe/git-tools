@@ -5,7 +5,6 @@ CURRENT=`git branch | grep "\*" | cut -d' ' -f2`
 explaining=false
 verbose=true
 run=true
-remote=origin
 
 printUsage() {
   echo "usage: $0 [options] [remote]"
@@ -43,7 +42,7 @@ for arg in "$@"; do
       exit 1
       ;;
     *)
-      remote=$arg
+      REMOTE=$arg
   esac
 done
 
@@ -58,8 +57,24 @@ if [[ "$explain" == true ]]; then
   echo "These are the commands that would be run:"
 fi
 
-if [[ "$CURRENT" != "master" ]]; then
-  git checkout master
+if [[ -z "$REMOTE" ]]; then
+  REMOTE=`$GIT config branch.$CURRENT.remote`
+fi
+
+if [[ -z "$REMOTE" ]]; then
+  REMOTE=origin
+fi
+
+TRACK=`$GIT config branch.$CURRENT.merge`
+
+if [[ -z "$TRACK" ]]; then
+  TRACK=refs/heads/master
+fi
+
+TRACK_BRANCH=${TRACK/refs\/heads\//}
+
+if [[ "$CURRENT" != "$TRACK_BRANCH" ]]; then
+  git checkout $TRACK_BRANCH
 fi
 
 $GIT svn info >/dev/null 2>/dev/null
@@ -73,13 +88,13 @@ if [[ "$TYPE" == "git-svn" ]]; then
   git rebase ${CURRENT}
   git svn dcommit
 else
-  if [[ "$CURRENT" != "master" ]]; then
+  if [[ "$CURRENT" != "$TRACK_BRANCH" ]]; then
     git merge ${CURRENT}
   fi
-  git push ${remote} master
+  git push ${REMOTE} ${TRACK_BRANCH}
 fi
 
-if [[ "$CURRENT" != "master" ]]; then
+if [[ "$CURRENT" != "$TRACK_BRANCH" ]]; then
   git checkout ${CURRENT}
 fi
 
