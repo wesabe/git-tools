@@ -30,6 +30,11 @@ esac
 CURRENT=`git branch | grep -m 1 "\*" | cut -d' ' -f2`
 TARGET=`git branch | grep -m 1 "$1" | perl -pe 's/[\s\*]//g'`
 
+if [[ "$CURRENT" == "$TARGET" ]]; then
+  echo "Already on branch $TARGET"
+  exit
+fi
+
 if [[ "$CURRENT" != "master" ]]; then
   echo "+ git checkout master"
   git checkout master
