@@ -60,7 +60,9 @@ stashed=false
 
 if [[ "$explain" == true ]]; then
   echo "These are the commands that would be run:"
-elif no_changes; then
+fi
+
+if no_changes; then
   stashed=false
 else
   git stash
