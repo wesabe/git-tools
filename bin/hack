@@ -1,8 +1,5 @@
 #!/bin/sh
 
-. git-sh-setup
-require_work_tree
-
 CURRENT=$(git symbolic-ref -q HEAD || git rev-parse HEAD)
 CURRENT=${CURRENT#refs/heads/}
 
@@ -62,6 +59,11 @@ git() {
 no_changes () {
 	$GIT diff-index --quiet --cached HEAD -- &&
 	$GIT diff-files --quiet
+}
+
+die() {
+  echo $@
+  exit 1
 }
 
 check_stash() {
