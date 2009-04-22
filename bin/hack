@@ -50,8 +50,21 @@ git() {
   test "$run"     = true && eval "$GIT $@"
 }
 
+no_changes () {
+	$GIT diff-index --quiet --cached HEAD -- &&
+	$GIT diff-files --quiet
+}
+
+# initial state
+stashed=false
+
 if [[ "$explain" == true ]]; then
   echo "These are the commands that would be run:"
+elif no_changes; then
+  stashed=false
+else
+  git stash
+  stashed=true
 fi
 
 REMOTE=`$GIT config branch.$CURRENT.remote`
@@ -89,4 +102,8 @@ fi
 if [[ "$CURRENT" != "$TRACK_BRANCH" ]]; then
   git checkout $CURRENT
   git rebase $TRACK_BRANCH
+fi
+
+if [[ "$stashed" == true ]]; then
+  git stash apply
 fi
