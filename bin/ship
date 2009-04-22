@@ -1,4 +1,8 @@
 #!/bin/sh
+
+. git-sh-setup
+require_work_tree
+
 CURRENT=$(git symbolic-ref -q HEAD || git rev-parse HEAD)
 CURRENT=${CURRENT#refs/heads/}
 
@@ -50,8 +54,13 @@ done
 GIT=`which git`
 
 git() {
-  test "$verbose" = true && echo "+ git $@"
-  test "$run"     = true && eval "$GIT $@"
+  if [[ "$verbose" == true ]]; then
+    echo "+ git $@"
+  fi
+
+  if [[ "$run" == true ]]; then
+    eval "$GIT $@"
+  fi
 }
 
 if [[ "$explain" == true ]]; then
@@ -75,7 +84,8 @@ fi
 TRACK_BRANCH=${TRACK/refs\/heads\//}
 
 if [[ "$CURRENT" != "$TRACK_BRANCH" ]]; then
-  git checkout $TRACK_BRANCH
+  git checkout $TRACK_BRANCH ||
+    die "Could not switch to $TRACK_BRANCH. Nothing has been changed yet."
 fi
 
 $GIT svn info >/dev/null 2>/dev/null
@@ -86,19 +96,25 @@ else
 fi
 
 if [[ "$TYPE" == "git-svn" ]]; then
-  git rebase ${CURRENT}
-  git svn dcommit
+  git rebase $CURRENT ||
+    die "Could not rebase against $CURRENT. You may need to resolve conflicts."
+  git svn dcommit ||
+    die "Failed to commit to the upstream Subversion server. Check your network connection."
 else
   if [[ "$CURRENT" != "$TRACK_BRANCH" ]]; then
-    git merge ${CURRENT}
+    git merge $CURRENT ||
+      die "Could not merge branch $CURRENT into $TRACK_BRANCH. You may need to resolve conflicts."
   fi
-  git push ${REMOTE} ${TRACK_BRANCH}
+  git push $REMOTE $TRACK_BRANCH ||
+    die "Could not push changes to $REMOTE/$TRACK_BRANCH. Check your network connection."
 fi
 
 if [[ "$CURRENT" != "$TRACK_BRANCH" ]]; then
-  git checkout ${CURRENT}
+  git checkout $CURRENT ||
+    die "Could not switch back to $CURRENT from $TRACK_BRANCH."
 fi
 
 if [[ "$TYPE" == "git-svn" ]]; then
-  git svn rebase
+  git svn rebase ||
+    die "Could not complete the rebase from the upstream Subversion server."
 fi
