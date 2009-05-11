@@ -114,20 +114,20 @@ repo = Grit::Repo.new(Dir.pwd)
 if before =~ /^0+$/
   # create a branch
   puts "creating a branch" if verbose?
-  trees_to_omit = repo.git.method_missing(:rev_parse, {:not => true, :branches => true}).to_a
-  trees_to_omit.reject! {|tree| tree == "^#{repo.git.method_missing(:rev_parse, {}, ref)}"}
-  args = trees_to_omit.map{|tree|tree.chomp}
+  trees_to_omit = repo.git.method_missing(:rev_parse, {:branches => true}).to_a
+  trees_to_omit.reject! {|tree| tree == repo.git.method_missing(:rev_parse, {}, ref)}
+  args = trees_to_omit.map{|tree|"^#{tree.chomp}"}
   args << ref
   # get all the commits in this branch's tree
   # excluding those commits belonging to any other branch's tree
-  raw_commits = repo.git.method_missing(:rev_list, {}, *args)
+  raw_commits = repo.git.method_missing(:rev_list, {:pretty => 'raw'}, *args)
 elsif after =~ /^0+$/
   # delete a branch
   puts "deleting a branch, don't post anything" if verbose?
   exit
 else
   range = "#{before}..#{after}"
-  raw_commits = repo.git.rev_list({}, range)
+  raw_commits = repo.git.rev_list({:pretty => 'raw'}, range)
 end
 
 puts "posting raw commits: #{raw_commits}" if verbose?
