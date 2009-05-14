@@ -1,52 +1,106 @@
 #!/bin/sh
 
-args="-d"
-CURRENT=`git branch | grep "\*" | cut -d' ' -f2`
+CURRENT=$(git symbolic-ref -q HEAD || git rev-parse HEAD)
+CURRENT=${CURRENT#refs/heads/}
 
-while [ $# -gt 0 ]; do
-  case "$1" in
-    -f|-D|--force)
-      args=${args/-d/-D}
+# default settings
+explain=false
+verbose=true
+run=true
+force=false
+BRANCH="$CURRENT"
+
+# colors
+RED="\033[0;31m"
+YELLOW="\033[1;33m"
+GREEN="\033[0;32m"
+NO_COLOR="\033[0m"
+
+die() {
+  echo "${RED}${@}${NO_COLOR}"
+  exit 1
+}
+
+warn() {
+  echo "${YELLOW}${@}${NO_COLOR}"
+}
+
+good() {
+  echo "${GREEN}${@}${NO_COLOR}"
+}
+
+printUsage() {
+  echo "usage: git-close [-f|--force] [BRANCH]"
+  echo "Deletes the current branch or a branch named BRANCH."
+  echo ""
+  echo "Options"
+  echo "  -f  --force     Passes -D to git-branch, forcing the branch to be deleted."
+  echo ""
+  echo "If BRANCH is not provided, the current branch is used. If BRANCH is master,"
+  echo "exit with an error message."
+}
+
+for arg in "$@"; do
+  case "$arg" in
+    -f | -D | --force)
+      force=true
       ;;
-    -h|--help)
-      echo "usage: git-close [-f|--force] [BRANCH]"
-      echo "Deletes the current branch or a branch named BRANCH."
-      echo ""
-      echo "Options"
-      echo "  -f  --force     Passes -D to git-branch, forcing the branch to be deleted."
-      echo ""
-      echo "If BRANCH is not provided, the current branch is used. If BRANCH is master,"
-      echo "exit with an error message."
+    -e | --explain | --dry-run)
+      explain=true
+      verbose=true
+      run=false
+      ;;
+    -v | --verbose)
+      verbose=true
+      ;;
+    -q | --quiet)
+      verbose=false
+      ;;
+    -h | --help)
       exit 0
       ;;
     -*)
-      echo "Unknown command line flag $1"
+      warn "${YELLOW}$0: unrecognized parameter '$arg'${NO_COLOR}"
       exit 1
       ;;
     *)
-      BRANCH="$1"
+      BRANCH="$arg"
       ;;
   esac
   shift
 done
 
-# set a default value of the current branch
-echo ${BRANCH:=`git branch | grep "\*" | cut -d' ' -f2`} >/dev/null
+GIT=`which git`
+
+git() {
+  if [[ "$verbose" == true ]]; then
+    echo "+ ${GREEN}git $@${NO_COLOR}"
+  fi
+
+  if [[ "$run" == true ]]; then
+    eval "$GIT $@"
+  fi
+}
 
 if [[ "$BRANCH" == "master" ]]; then
-  echo "Cowardly refusing to remove master branch"
-  exit 1
+  die "Cowardly refusing to remove master branch"
 fi
 
 if [[ "$BRANCH" == "$CURRENT" && "$CURRENT" != "master" ]]; then
-  echo "+ git checkout master"
   git checkout master
 fi
 
-echo "+ git branch $args $BRANCH"
+if [[ "$force" == true ]]; then
+  args="-D"
+else
+  args="-d"
+fi
+
 git branch $args $BRANCH
 
 if [[ $? != 0 ]]; then
-  echo "+ git checkout $BRANCH"
+  warn "Unable to close $BRANCH. If you're sure you want to delete it, try adding --force."
   git checkout $BRANCH
+elif [[ "$run" == true ]]; then
+  good "Branch $BRANCH has been closed"
 fi

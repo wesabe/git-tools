@@ -1,34 +1,94 @@
 #!/bin/sh
 
-case "$1" in
-  -h|--help)
-    echo "usage: git-open BRANCH"
-    echo "Creates a new branch named BRANCH by forking master or, if"
-    echo "a branch has BRANCH in the name, checks that branch out."
-    echo ""
-    echo "Given these branches:"
-    echo ""
-    echo "  sh-$ git branch"
-    echo "  * master"
-    echo "    performance"
-    echo ""
-    echo "Creating a new branch"
-    echo ""
-    echo "  sh-$ git open test"
-    echo "  + git checkout -b test"
-    echo "  Switched to a new branch \"test\""
-    echo ""
-    echo "Switching to an existing branch"
-    echo ""
-    echo "  sh-$ git open perf"
-    echo "  + git checkout performance"
-    echo "  Switched to branch \"performance\""
-    exit 0
-    ;;
-esac
+CURRENT=$(git symbolic-ref -q HEAD || git rev-parse HEAD)
+CURRENT=${CURRENT#refs/heads/}
 
-CURRENT=`git branch | grep -m 1 "\*" | cut -d' ' -f2`
-TARGET=`git branch | grep -m 1 "$1" | perl -pe 's/[\s\*]//g'`
+# default settings
+explain=false
+verbose=true
+run=true
+
+# colors
+RED="\033[0;31m"
+YELLOW="\033[1;33m"
+GREEN="\033[0;32m"
+NO_COLOR="\033[0m"
+
+die() {
+  echo "${RED}${@}${NO_COLOR}"
+  exit 1
+}
+
+warn() {
+  echo "${YELLOW}${@}${NO_COLOR}"
+}
+
+good() {
+  echo "${GREEN}${@}${NO_COLOR}"
+}
+
+printUsage() {
+  echo "usage: git-open BRANCH"
+  echo "Creates a new branch named BRANCH by forking master or, if"
+  echo "a branch by that name exists, it checks that branch out."
+  echo ""
+  echo "Given these branches:"
+  echo ""
+  echo "  sh-$ git branch"
+  echo "  * master"
+  echo "    performance"
+  echo ""
+  echo "Creating a new branch"
+  echo ""
+  echo "  sh-$ git open test"
+  echo "  + git checkout -b test"
+  echo "  Switched to a new branch \"test\""
+  echo ""
+  echo "Switching to an existing branch"
+  echo ""
+  echo "  sh-$ git open performance"
+  echo "  + git checkout performance"
+  echo "  Switched to branch \"performance\""
+}
+
+for arg in "$@"; do
+  case $arg in
+    -e | --explain | --dry-run)
+      explain=true
+      verbose=true
+      run=false
+      ;;
+    -v | --verbose)
+      verbose=true
+      ;;
+    -q | --quiet)
+      verbose=false
+      ;;
+    -h | --help)
+      printUsage
+      exit 0
+      ;;
+    -*)
+      warn "${YELLOW}$0: unrecognized parameter '$arg'${NO_COLOR}"
+      exit 1
+      ;;
+    *)
+      TARGET=$arg
+      ;;
+  esac
+done
+
+GIT=`which git`
+
+git() {
+  if [[ "$verbose" == true ]]; then
+    echo "+ ${GREEN}git $@${NO_COLOR}"
+  fi
+
+  if [[ "$run" == true ]]; then
+    eval "$GIT $@"
+  fi
+}
 
 if [[ "$CURRENT" == "$TARGET" ]]; then
   echo "Already on branch $TARGET"
@@ -36,7 +96,6 @@ if [[ "$CURRENT" == "$TARGET" ]]; then
 fi
 
 if [[ "$CURRENT" != "master" ]]; then
-  echo "+ git checkout master"
   git checkout master
 fi
 
@@ -45,9 +104,17 @@ if [[ "$TARGET" == "master" ]]; then
 fi
 
 if [[ -z "$TARGET" ]]; then
-  echo "+ git checkout -b $1"
-  git checkout -b $1
-else
-  echo "+ git checkout $TARGET"
-  git checkout $TARGET
+  warn "Please provide a branch name"
+  printUsage
+  exit 1
+fi
+
+$GIT rev-parse "$TARGET" 2>/dev/null >/dev/null &&
+  git checkout "$TARGET" ||
+  git checkout -b $TARGET
+
+if [[ $? == 0 && $run == true ]]; then
+  good "Now working on $TARGET"
+elif [[ $run == true ]]; then
+  die "Could not start working on $TARGET"
 fi
