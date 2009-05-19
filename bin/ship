@@ -136,6 +136,6 @@ if [[ "$TYPE" == "git-svn" ]]; then
     die "Could not complete the rebase from the upstream Subversion server."
 fi
 
-if [[ "$run" != true ]]; then
+if [[ "$run" == true ]]; then
   good "Successfully shipped your changes from $CURRENT to $REMOTE"
 fi
