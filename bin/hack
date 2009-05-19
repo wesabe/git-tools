@@ -153,4 +153,6 @@ if [[ "$stashed" == true ]]; then
   stashed=false
 fi
 
-good "Successfully updated `basename $PWD`"
+if [[ "$run" != true ]]; then
+  good "Successfully updated `basename $PWD`"
+fi
