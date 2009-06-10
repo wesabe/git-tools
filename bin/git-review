@@ -1,0 +1,129 @@
+#!/bin/sh
+
+CURRENT=$(git symbolic-ref -q HEAD || git rev-parse HEAD)
+CURRENT=${CURRENT#refs/heads/}
+
+# default settings
+explain=false
+verbose=true
+run=true
+
+printUsage() {
+  echo "usage: $0 [options]"
+  echo
+  echo "  -h  --help                  Show this message"
+  echo "  -v  --verbose               Show all commands before running them (default: on)"
+  echo "  -q  --quiet                 Don't display commands before running them (default: off)"
+  echo "  -e  --explain  --dry-run    Don't actually run commands (default: off)"
+  echo
+}
+
+for arg in "$@"; do
+  case $arg
+  in
+    -e | --explain | --dry-run)
+      explain=true
+      verbose=true
+      run=false
+      ;;
+    -v | --verbose)
+      verbose=true
+      ;;
+    -q | --quiet)
+      verbose=false
+      ;;
+    -h | --help)
+      printUsage
+      exit
+      ;;
+    *)
+      echo "$0: unrecognized parameter '$arg'"
+      printUsage
+      exit 1
+      ;;
+  esac
+done
+
+# colors
+RED="\033[0;31m"
+YELLOW="\033[1;33m"
+GREEN="\033[0;32m"
+NO_COLOR="\033[0m"
+
+die() {
+  echo "${RED}${@}${NO_COLOR}"
+  exit 1
+}
+
+warn() {
+  echo "${YELLOW}${@}${NO_COLOR}"
+}
+
+good() {
+  echo "${GREEN}${@}${NO_COLOR}"
+}
+
+#git stuff
+GIT=`which git`
+
+git() {
+  if [[ "$verbose" == true ]]; then
+    echo "+ ${GREEN}git $@${NO_COLOR}"
+  fi
+
+  if [[ "$run" == true ]]; then
+    eval "$GIT $@"
+  fi
+}
+
+no_changes () {
+	$GIT diff-index --quiet --cached HEAD -- &&
+	$GIT diff-files --quiet
+}
+
+check_stash() {
+  if [[ "$stashed" == true ]]; then
+    warn "Your stashed changes were not applied because an error occurred. Don't panic. They are not lost. Look for them in \"git stash list\"."
+  fi
+}
+
+if [[ "$explain" == true ]]; then
+  echo "These are the commands that would be run:"
+fi
+
+if ! no_changes; then
+  die "You have local changes. Please do something with them before using $0"
+fi
+
+$GIT svn info >/dev/null 2>/dev/null &&
+  die "$0 does not support git-svn repositories."
+
+LOG=$($GIT log --pretty="format:%s" origin/master..HEAD)
+CHANGESETS=$($GIT rev-list origin/master..HEAD | wc -l)
+CHANGESETS=${CHANGESETS//[[:space:]]}
+
+if [[ "$CHANGESETS" == "0" ]]; then
+  die "You have no changes to review. Are you on the right branch?"
+elif [[ "$CHANGESETS" != "1" ]]; then
+  die "You have $CHANGESETS changes, but you should only push one at a time. Did you forget to squash your commits?"
+fi
+
+if [[ "$run" == true ]]; then
+  good "Pushing '$LOG'"
+fi
+
+git push ||
+  die "Could not push your changes for review. Perhaps you need to update first?"
+
+if [[ "$CURRENT" == "master" ]]; then
+  git reset --hard origin/master ||
+    die "Could not reset your master branch to origin/master."
+fi
+
+if [[ "$run" == true ]]; then
+  if [[ "$CURRENT" == "master" ]]; then
+    good "Successfully pushed '$LOG' for review and reset master"
+  else
+    good "Successfully pushed '$LOG' for review"
+  fi
+fi
