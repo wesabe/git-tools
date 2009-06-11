@@ -108,10 +108,6 @@ elif [[ "$CHANGESETS" != "1" ]]; then
   die "You have $CHANGESETS changes, but you should only push one at a time. Did you forget to squash your commits?"
 fi
 
-if [[ "$run" == true ]]; then
-  good "Pushing '$LOG'"
-fi
-
 git push ||
   die "Could not push your changes for review. Perhaps you need to update first?"
 
