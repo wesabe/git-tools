@@ -20,11 +20,6 @@ printUsage() {
   echo "If you pass it a change number, it will replace that change instead of making a new one."
 }
 
-last_arg=${!#}
-if [[ ${last_arg:0:1} != "-" ]]; then
-  change=$last_arg
-fi
-
 for arg in "$@"; do
   case $arg
   in
@@ -44,10 +39,12 @@ for arg in "$@"; do
       exit
       ;;
     *)
-      if [[ $arg != $change ]]; then
-        echo "$0: unrecognized parameter '$arg'"
+      if [[ "$change" != "" ]]; then
+        echo "$0: already given a change number ($change), but got another ($arg)"
         printUsage
         exit 1
+      else
+        change=$arg
       fi
       ;;
   esac
@@ -117,7 +114,7 @@ elif [[ "$CHANGESETS" != "1" ]]; then
   die "You have $CHANGESETS changes, but you should only push one at a time. Did you forget to squash your commits?"
 fi
 
-if [[ $change ]]; then
+if [[ "$change" != "" ]]; then
   change_args="origin HEAD:refs/changes/$change"
 fi
 
