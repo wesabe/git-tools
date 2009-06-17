@@ -53,9 +53,14 @@ check_stash() {
   fi
 }
 
+is_integer() {
+  [ "$1" -eq "$1" ] > /dev/null 2>&1
+  return $?
+}
+
 printShortUsage() {
   echo "Usage: $this [<options>] push [<change number>]"
-  echo "   or: $this [<options>] start <change number>"
+  echo "   or: $this [<options>] <change number>"
   echo "   or: $this [<options>] reset"
 }
 printUsage() {
@@ -78,7 +83,7 @@ printUsage() {
   echo "    Given a change number, the current patch will replace the existing one, following"
   echo "    the same reset rules as above."
   echo
-  echo "  start <change number>"
+  echo "  <change number>"
   echo "    Applies the latest patch for the change at <change number> on top of master on a"
   echo "    branch named for <change number>, allowing you to review the change."
   echo
@@ -121,7 +126,7 @@ pushReview() {
   fi
 }
 
-# git review start 100
+# git review 100
 startReview() {
   $GIT remote show changes 2>/dev/null 1>&2 ||
     die "In order to use $this to start a review, you need a 'changes' remote. Please add it before trying again."
@@ -210,9 +215,14 @@ while true; do
       exit
       ;;
     *)
-      warn "$this: unrecognized option or subcommand $arg"
-      printUsage
-      exit 2
+      if is_integer $arg; then
+        startReview $arg
+        exit
+      else
+        warn "$this: unrecognized option or subcommand $arg"
+        printUsage
+        exit 2
+      fi
       ;;
   esac
 done
