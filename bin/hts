@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 if [ -e test ] && [ -e spec ]; then
   hack && rake test spec && ship
 elif [ -e spec ]; then

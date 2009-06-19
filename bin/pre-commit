@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 #
 # A precommit hook that checks the files in the index for trailing whitespace.
 # If it finds any, it will automatically strip the whitespace from those files
