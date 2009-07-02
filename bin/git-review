@@ -90,6 +90,10 @@ printUsage() {
   echo "  reset"
   echo "    Removes the current change branch created by the 'start' subcommand and switches"
   echo "    back to master."
+  echo
+  echo "  diff <change number> [<patch number> <patch number>]"
+  echo "    Displays a diff of the last two patches applies to the given changeset, or between"
+  echo "    the given patches of that changeset."
 }
 
 
@@ -171,6 +175,29 @@ resetReview() {
     die "Unable to close the review branch $CURRENT"
 }
 
+diffPatches() {
+  change=$1
+  if [ "$change" == "" ]; then
+    die "You must specify a changeset (and optionally, patch numbers) to diff"
+  fi
+  
+  patch1=$2
+  patch2=$3
+  changeref=refs/remotes/changes/${change:(-2)}/$change
+  
+  if [ "$patch1" != "" ] && [ "$patch2" != "" ]; then
+    patchref1=$changeref/$patch1
+    patchref2=$changeref/$patch2
+  else
+    patchref1=$($GIT rev-parse --symbolic-full-name --all | grep $changeref | sort --reverse | head -n2 | tail -n1)
+    patchref2=$($GIT rev-parse --symbolic-full-name --all | grep $changeref | sort --reverse | head -n1)
+    if [ "$patchref1" == "$patchref2" ]; then
+      die "Only one patchset--nothing to diff!"
+    fi
+  fi
+  
+  $GIT diff --src-prefix=$patchref1: --dst-prefix=$patchref2: $patchref1 $patchref2
+}
 
 if ! no_changes; then
   die "You have local changes. Please do something with them before using $this"
@@ -212,6 +239,10 @@ while true; do
       ;;
     push)
       pushReview $1
+      exit
+      ;;
+    diff)
+      diffPatches $1 $2 $3
       exit
       ;;
     *)
