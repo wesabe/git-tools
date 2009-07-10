@@ -99,6 +99,18 @@ printUsage() {
 
 pushReview() {
   change=$1
+  if [[ -z "$change" ]]; then
+    # try to read the change number from the branch name
+    if [[ "${CURRENT:0:1}" == "r" ]]; then
+      change=${CURRENT:1}
+      if is_integer $change; then
+        good "Using change number $change from branch name"
+      else
+        change=""
+      fi
+    fi
+  fi
+
   LOG=$($GIT log --pretty="format:%s" origin/master..HEAD)
   CHANGESETS=$($GIT rev-list origin/master..HEAD | wc -l)
   CHANGESETS=${CHANGESETS//[[:space:]]}
@@ -148,7 +160,7 @@ startReview() {
   fi
 
   # create a new branch based on master to work in
-  branch=change$change
+  branch=r$change
   $GIT branch -D $branch 2>/dev/null 1>&2
   git checkout -b $branch master ||
     die "Unable to create a new branch '$branch'"
@@ -180,11 +192,11 @@ diffPatches() {
   if [ "$change" == "" ]; then
     die "You must specify a changeset (and optionally, patch numbers) to diff"
   fi
-  
+
   patch1=$2
   patch2=$3
   changeref=refs/remotes/changes/${change:(-2)}/$change
-  
+
   if [ "$patch1" != "" ] && [ "$patch2" != "" ]; then
     patchref1=$changeref/$patch1
     patchref2=$changeref/$patch2
@@ -195,7 +207,7 @@ diffPatches() {
       die "Only one patchset--nothing to diff!"
     fi
   fi
-  
+
   $GIT diff --src-prefix=$patchref1: --dst-prefix=$patchref2: $patchref1 $patchref2
 }
 
