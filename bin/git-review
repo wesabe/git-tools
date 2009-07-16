@@ -152,8 +152,7 @@ startReview() {
     die "Unable to fetch changes, please check your network connection"
 
   change=$1
-  shortchange=`echo $change | cut -c2-`
-  changeref=refs/remotes/changes/$shortchange/$change
+  changeref=refs/remotes/changes/${change:(-2)}/$change
   patchref=$($GIT rev-parse --symbolic-full-name --all | grep $changeref | sort --reverse | head -n1)
 
   if [ -z "$patchref" ]; then
@@ -196,8 +195,7 @@ diffPatches() {
 
   patch1=$2
   patch2=$3
-  shortchange=`echo $change | cut -c2-`
-  changeref=refs/remotes/changes/$shortchange/$change
+  changeref=refs/remotes/changes/${change:(-2)}/$change
 
   if [ "$patch1" != "" ] && [ "$patch2" != "" ]; then
     patchref1=$changeref/$patch1
