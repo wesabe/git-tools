@@ -73,24 +73,24 @@ done
 GIT=`which git`
 
 git() {
-  if [[ "$verbose" == true ]]; then
+  if [ "$verbose" = true ]; then
     echo "+ ${GREEN}git $@${NO_COLOR}"
   fi
 
-  if [[ "$run" == true ]]; then
+  if [ "$run" = true ]; then
     eval "$GIT $@"
   fi
 }
 
-if [[ "$BRANCH" == "master" ]]; then
+if [ "$BRANCH" = "master" ]; then
   die "Cowardly refusing to remove master branch"
 fi
 
-if [[ "$BRANCH" == "$CURRENT" && "$CURRENT" != "master" ]]; then
+if [ "$BRANCH" = "$CURRENT" && "$CURRENT" != "master" ]; then
   git checkout master
 fi
 
-if [[ "$force" == true ]]; then
+if [ "$force" = true ]; then
   args="-D"
 else
   args="-d"
@@ -98,9 +98,9 @@ fi
 
 git branch $args $BRANCH
 
-if [[ $? != 0 ]]; then
+if [ $? != 0 ]; then
   warn "Unable to close $BRANCH. If you're sure you want to delete it, try adding --force."
   git checkout $BRANCH
-elif [[ "$run" == true ]]; then
+elif [ "$run" = true ]; then
   good "Branch $BRANCH has been closed"
 fi

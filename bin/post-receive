@@ -2,9 +2,9 @@
 this=$0
 while true; do
   linkbin=`readlink $this`
-  if [[ -z "$linkbin" ]]; then
+  if [ -z "$linkbin" ]; then
     break
-  elif [[ "$this" == "$linkbin" ]]; then
+  elif [ "$this" = "$linkbin" ]; then
     break
   else
     this=$linkbin
@@ -17,7 +17,7 @@ bindir=`dirname $this`
 read COMMIT_FROM COMMIT_TO COMMIT_REF
 
 for script in $bindir/post-receive.d/*; do
-  if [[ -x $script ]]; then
+  if [ -x $script ]; then
     # echo $script $*
     echo $COMMIT_FROM $COMMIT_TO $COMMIT_REF | $script $*
   fi

@@ -81,29 +81,29 @@ done
 GIT=`which git`
 
 git() {
-  if [[ "$verbose" == true ]]; then
+  if [ "$verbose" = true ]; then
     echo "+ ${GREEN}git $@${NO_COLOR}"
   fi
 
-  if [[ "$run" == true ]]; then
+  if [ "$run" = true ]; then
     eval "$GIT $@"
   fi
 }
 
-if [[ "$CURRENT" == "$TARGET" ]]; then
+if [ "$CURRENT" = "$TARGET" ]; then
   echo "Already on branch $TARGET"
   exit
 fi
 
-if [[ "$CURRENT" != "master" ]]; then
+if [ "$CURRENT" != "master" ]; then
   git checkout master
 fi
 
-if [[ "$TARGET" == "master" ]]; then
+if [ "$TARGET" = "master" ]; then
   exit
 fi
 
-if [[ -z "$TARGET" ]]; then
+if [ -z "$TARGET" ]; then
   warn "Please provide a branch name"
   printUsage
   exit 1
@@ -113,8 +113,8 @@ $GIT rev-parse "$TARGET" 2>/dev/null >/dev/null &&
   git checkout "$TARGET" ||
   git checkout -b $TARGET
 
-if [[ $? == 0 && $run == true ]]; then
+if [ $? = 0 && $run = true ]; then
   good "Now working on $TARGET"
-elif [[ $run == true ]]; then
+elif [ $run = true ]; then
   die "Could not start working on $TARGET"
 fi

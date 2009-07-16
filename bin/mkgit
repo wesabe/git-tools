@@ -7,7 +7,7 @@ bindir=$PWD
 # account for it being run through a symlink
 linkpath=`readlink $bindir/$binfile`
 
-if [[ "$linkpath" != "" ]]; then
+if [ "$linkpath" != "" ]; then
   bindir=`dirname $linkpath`
 fi
 
@@ -21,13 +21,13 @@ GIT_HOME=`dirname $HOME`/$GIT_USER
 if [ -z $1 ]; then
   echo "Usage: $binfile <repo name>" 
 else
-  if [[ "$USER" != "$GIT_USER" ]]; then
+  if [ "$USER" != "$GIT_USER" ]; then
     sudo -u $GIT_USER $0 $1
   else
     dir=$1.git
     hostname=`hostname`
     
-    if [[ -d $GIT_HOME/$dir ]]; then
+    if [ -d $GIT_HOME/$dir ]; then
       echo "Repo $dir already exists"
     else
       echo "Creating repo $GIT_HOME/$dir"
