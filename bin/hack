@@ -67,11 +67,11 @@ good() {
 GIT=`which git`
 
 git() {
-  if [[ "$verbose" == true ]]; then
+  if [ "$verbose" = true ]; then
     echo "+ ${GREEN}git $@${NO_COLOR}"
   fi
 
-  if [[ "$run" == true ]]; then
+  if [ "$run" = true ]; then
     eval "$GIT $@"
   fi
 }
@@ -82,7 +82,7 @@ no_changes () {
 }
 
 check_stash() {
-  if [[ "$stashed" == true ]]; then
+  if [ "$stashed" = true ]; then
     warn "Your stashed changes were not applied because an error occurred. Don't panic. They are not lost. Look for them in \"git stash list\"."
   fi
 }
@@ -90,7 +90,7 @@ check_stash() {
 # initial state
 stashed=false
 
-if [[ "$explain" == true ]]; then
+if [ "$explain" = true ]; then
   echo "These are the commands that would be run:"
 fi
 
@@ -106,31 +106,31 @@ fi
 
 REMOTE=`$GIT config branch.$CURRENT.remote`
 
-if [[ -z "$REMOTE" ]]; then
+if [ -z "$REMOTE" ]; then
   REMOTE=origin
 fi
 
 TRACK=`$GIT config branch.$CURRENT.merge`
 
-if [[ -z "$TRACK" ]]; then
+if [ -z "$TRACK" ]; then
   TRACK=refs/heads/master
 fi
 
-TRACK_BRANCH=${TRACK/refs\/heads\//}
+TRACK_BRANCH=${TRACK#refs/heads/}
 
-if [[ "$CURRENT" != "$TRACK_BRANCH" ]]; then
+if [ "$CURRENT" != "$TRACK_BRANCH" ]; then
   git checkout $TRACK_BRANCH ||
     die "Could not switch to $TRACK_BRANCH. Nothing has been changed yet."
 fi
 
 $GIT svn info >/dev/null 2>/dev/null
-if [[ $? == 0 ]]; then
+if [ $? = 0 ]; then
   TYPE="git-svn"
 else
   TYPE="git"
 fi
 
-if [[ "$TYPE" == "git-svn" ]]; then
+if [ "$TYPE" = "git-svn" ]; then
   git svn rebase ||
     die "Could not complete the rebase from the upstream Subversion server."
 else
@@ -140,19 +140,19 @@ else
     die "Could not rebase against $REMOTE/$TRACK_BRANCH. You may need to resolve conflicts."
 fi
 
-if [[ "$CURRENT" != "$TRACK_BRANCH" ]]; then
+if [ "$CURRENT" != "$TRACK_BRANCH" ]; then
   git checkout $CURRENT ||
     die "Could not switch back to $CURRENT."
   git rebase $TRACK_BRANCH ||
     die "Could not rebase against $TRACK_BRANCH. You may need to resolve conflicts."
 fi
 
-if [[ "$stashed" == true ]]; then
+if [ "$stashed" = true ]; then
   git stash apply ||
     die "Could not apply your stashed changes over the updates."
   stashed=false
 fi
 
-if [[ "$run" == true ]]; then
+if [ "$run" = true ]; then
   good "Successfully updated `basename $PWD`"
 fi
