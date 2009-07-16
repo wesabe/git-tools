@@ -113,7 +113,7 @@ pushReview() {
 
   LOG=$($GIT log --pretty="format:%s" origin/master..HEAD)
   CHANGESETS=$($GIT rev-list origin/master..HEAD | wc -l)
-  CHANGESETS=${CHANGESETS//[:space:]}
+  CHANGESETS=${CHANGESETS//[[:space:]]}
 
   if [ "$CHANGESETS" = "0" ]; then
     die "You have no changes to review. Are you on the right branch?"
