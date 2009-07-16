@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 
 CURRENT=$(git symbolic-ref -q HEAD || git rev-parse HEAD)
 CURRENT=${CURRENT#refs/heads/}
@@ -15,16 +15,16 @@ GREEN="\033[0;32m"
 NO_COLOR="\033[0m"
 
 die() {
-  echo "${RED}${@}${NO_COLOR}"
+  echo -e "${RED}${@}${NO_COLOR}"
   exit 1
 }
 
 warn() {
-  echo "${YELLOW}${@}${NO_COLOR}"
+  echo -e "${YELLOW}${@}${NO_COLOR}"
 }
 
 good() {
-  echo "${GREEN}${@}${NO_COLOR}"
+  echo -e "${GREEN}${@}${NO_COLOR}"
 }
 
 printUsage() {
@@ -82,7 +82,7 @@ GIT=`which git`
 
 git() {
   if [ "$verbose" = true ]; then
-    echo "+ ${GREEN}git $@${NO_COLOR}"
+    echo -e "+ ${GREEN}git $@${NO_COLOR}"
   fi
 
   if [ "$run" = true ]; then
