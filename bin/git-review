@@ -58,6 +58,17 @@ is_integer() {
   return $?
 }
 
+is_review_branch() {
+  branch=$1
+  if [ "${branch:0:1}" = "r" ]; then
+    change=${branch:1}
+    if is_integer $change; then
+      return `true`
+    fi
+  fi
+  return `false`
+}
+
 printShortUsage() {
   echo "Usage: $this [<options>] push [<change number>]"
   echo "   or: $this [<options>] <change number>"
@@ -94,6 +105,11 @@ printUsage() {
   echo "  diff <change number> [<patch number> <patch number>]"
   echo "    Displays a diff of the last two patches applies to the given changeset, or between"
   echo "    the given patches of that changeset."
+  echo
+  echo "  rebase [<change number>]"
+  echo "    Rebases the latest patch for a given change number (or the current change branch)"
+  echo "    against master, then submits it as a new patch to that change. This helps deal with"
+  echo "    Gerrit's \"Your change could not be merged due to a path conflict\" error message."
 }
 
 
@@ -101,12 +117,10 @@ pushReview() {
   change=$1
   if [ -z "$change" ]; then
     # try to read the change number from the branch name
-    if [ "${CURRENT:0:1}" = "r" ]; then
+    if is_review_branch $CURRENT; then
       change=${CURRENT:1}
-      if is_integer $change; then
+      if [ $run = true ]; then
         good "Using change number $change from branch name"
-      else
-        change=""
       fi
     fi
   fi
@@ -115,10 +129,12 @@ pushReview() {
   CHANGESETS=$($GIT rev-list origin/master..HEAD | wc -l)
   CHANGESETS=${CHANGESETS//[[:space:]]}
 
-  if [ "$CHANGESETS" = "0" ]; then
-    die "You have no changes to review. Are you on the right branch?"
-  elif [ "$CHANGESETS" != "1" ]; then
-    die "You have $CHANGESETS changes, but you should only push one at a time. Did you forget to squash your commits?"
+  if [ "$run" = true ]; then
+    if [ "$CHANGESETS" = "0" ]; then
+      die "You have no changes to review. Are you on the right branch?"
+    elif [ "$CHANGESETS" != "1" ]; then
+      die "You have $CHANGESETS changes, but you should only push one at a time. Did you forget to squash your commits?"
+    fi
   fi
 
   if [ "$change" != "" ]; then
@@ -211,6 +227,33 @@ diffPatches() {
   $GIT diff --src-prefix=$patchref1: --dst-prefix=$patchref2: $patchref1 $patchref2
 }
 
+rebaseReview() {
+  change=$1
+  if [ -z "$change" ]; then
+    if is_review_branch $CURRENT; then
+      change=${CURRENT:1}
+      if [ $run = true ]; then
+        good "Using change number $change from branch name"
+      fi
+    else
+      die "Please provide a change number to rebase (see help for more info)"
+    fi
+  fi
+
+  if ! is_review_branch $CURRENT; then
+    # if not already on a review branch, fetch and check it out
+    startReview $change
+  fi
+
+  # try to push this patch along
+  pushReview $change
+
+  # reset if we weren't already on a review branch
+  if is_review_branch $CURRENT; then
+    resetReview
+  fi
+}
+
 if ! no_changes; then
   die "You have local changes. Please do something with them before using $this"
 fi
@@ -255,6 +298,10 @@ while true; do
       ;;
     diff)
       diffPatches $1 $2 $3
+      exit
+      ;;
+    rebase)
+      rebaseReview $1
       exit
       ;;
     *)
