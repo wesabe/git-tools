@@ -113,7 +113,7 @@ $GIT rev-parse "$TARGET" 2>/dev/null >/dev/null &&
   git checkout "$TARGET" ||
   git checkout -b $TARGET
 
-if [ $? = 0 && $run = true ]; then
+if [[ $? = 0 && $run = true ]]; then
   good "Now working on $TARGET"
 elif [ $run = true ]; then
   die "Could not start working on $TARGET"
