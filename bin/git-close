@@ -86,7 +86,7 @@ if [ "$BRANCH" = "master" ]; then
   die "Cowardly refusing to remove master branch"
 fi
 
-if [ "$BRANCH" = "$CURRENT" && "$CURRENT" != "master" ]; then
+if [[ "$BRANCH" = "$CURRENT" && "$CURRENT" != "master" ]]; then
   git checkout master
 fi
 
