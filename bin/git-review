@@ -59,9 +59,9 @@ is_integer() {
 }
 
 is_review_branch() {
-  branch=$1
+  local branch=$1
   if [ "${branch:0:1}" = "r" ]; then
-    change=${branch:1}
+    local change=${branch:1}
     if is_integer $change; then
       return 0
     fi
@@ -116,20 +116,20 @@ printUsage() {
 pushReview() {
   abort_on_bad_repo_state
 
-  change=$1
+  local change=$1
   if [ -z "$change" ]; then
     # try to read the change number from the branch name
     if is_review_branch $CURRENT; then
-      change=${CURRENT:1}
+      local change=${CURRENT:1}
       if [ $run = true ]; then
         good "Using change number $change from branch name"
       fi
     fi
   fi
 
-  LOG=$($GIT log --pretty="format:%s" origin/master..HEAD)
-  CHANGESETS=$($GIT rev-list origin/master..HEAD | wc -l)
-  CHANGESETS=${CHANGESETS//[[:space:]]}
+  local LOG=$($GIT log --pretty="format:%s" origin/master..HEAD)
+  local CHANGESETS=$($GIT rev-list origin/master..HEAD | wc -l)
+  local CHANGESETS=${CHANGESETS//[[:space:]]}
 
   if [ "$run" = true ]; then
     if [ "$CHANGESETS" = "0" ]; then
@@ -140,7 +140,7 @@ pushReview() {
   fi
 
   if [ "$change" != "" ]; then
-    change_args="origin HEAD:refs/changes/$change"
+    local change_args="origin HEAD:refs/changes/$change"
   fi
 
   git push $change_args ||
@@ -171,16 +171,16 @@ startReview() {
   git fetch changes ||
     die "Unable to fetch changes, please check your network connection"
 
-  change=$1
-  changeref=refs/remotes/changes/${change:(-2)}/$change
-  patchref=$($GIT rev-parse --symbolic-full-name --all | grep $changeref | sort --reverse | head -n1)
+  local change=$1
+  local changeref=refs/remotes/changes/${change:(-2)}/$change
+  local patchref=$($GIT rev-parse --symbolic-full-name --all | grep $changeref | sort --reverse | head -n1)
 
   if [ -z "$patchref" ]; then
     die "Unable to find a patch for ±$change"
   fi
 
   # create a new branch based on master to work in
-  branch=r$change
+  local branch=r$change
   $GIT branch -D $branch 2>/dev/null 1>&2
   git checkout -b $branch master ||
     die "Unable to create a new branch '$branch'"
@@ -210,21 +210,21 @@ resetReview() {
 }
 
 diffPatches() {
-  change=$1
+  local change=$1
   if [ "$change" = "" ]; then
     die "You must specify a changeset (and optionally, patch numbers) to diff"
   fi
 
-  patch1=$2
-  patch2=$3
-  changeref=refs/remotes/changes/${change:(-2)}/$change
+  local patch1=$2
+  local patch2=$3
+  local changeref=refs/remotes/changes/${change:(-2)}/$change
 
   if [ "$patch1" != "" ] && [ "$patch2" != "" ]; then
-    patchref1=$changeref/$patch1
-    patchref2=$changeref/$patch2
+    local patchref1=$changeref/$patch1
+    local patchref2=$changeref/$patch2
   else
-    patchref1=$($GIT rev-parse --symbolic-full-name --all | grep $changeref | sort --reverse | head -n2 | tail -n1)
-    patchref2=$($GIT rev-parse --symbolic-full-name --all | grep $changeref | sort --reverse | head -n1)
+    local patchref1=$($GIT rev-parse --symbolic-full-name --all | grep $changeref | sort --reverse | head -n2 | tail -n1)
+    local patchref2=$($GIT rev-parse --symbolic-full-name --all | grep $changeref | sort --reverse | head -n1)
     if [ "$patchref1" = "$patchref2" ]; then
       die "Only one patchset--nothing to diff!"
     fi
@@ -236,10 +236,10 @@ diffPatches() {
 rebaseReview() {
   abort_on_bad_repo_state
 
-  change=$1
+  local change=$1
   if [ -z "$change" ]; then
     if is_review_branch $CURRENT; then
-      change=${CURRENT:1}
+      local change=${CURRENT:1}
       if [ $run = true ]; then
         good "Using change number $change from branch name"
       fi
