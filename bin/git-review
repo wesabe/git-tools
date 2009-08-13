@@ -63,10 +63,10 @@ is_review_branch() {
   if [ "${branch:0:1}" = "r" ]; then
     change=${branch:1}
     if is_integer $change; then
-      return `true`
+      return 0
     fi
   fi
-  return `false`
+  return 1
 }
 
 printShortUsage() {
