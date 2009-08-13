@@ -114,6 +114,8 @@ printUsage() {
 
 
 pushReview() {
+  abort_on_bad_repo_state
+
   change=$1
   if [ -z "$change" ]; then
     # try to read the change number from the branch name
@@ -160,6 +162,8 @@ pushReview() {
 
 # git review 100
 startReview() {
+  abort_on_bad_repo_state
+
   $GIT remote show changes 2>/dev/null 1>&2 ||
     die "In order to use $this to start a review, you need a 'changes' remote. Please add it before trying again."
 
@@ -193,6 +197,8 @@ startReview() {
 
 # git review reset
 resetReview() {
+  abort_on_bad_repo_state
+
   if [ ! -z "$@" ]; then
     warn "$this: unrecognized argument $1 for 'reset' subcommand"
     printUsage
@@ -228,6 +234,8 @@ diffPatches() {
 }
 
 rebaseReview() {
+  abort_on_bad_repo_state
+
   change=$1
   if [ -z "$change" ]; then
     if is_review_branch $CURRENT; then
@@ -254,12 +262,14 @@ rebaseReview() {
   fi
 }
 
-if ! no_changes; then
-  die "You have local changes. Please do something with them before using $this"
-fi
+abort_on_bad_repo_state() {
+  if ! no_changes; then
+    die "You have local changes. Please do something with them before using $this"
+  fi
 
-$GIT svn info >/dev/null 2>/dev/null &&
-  die "$this does not support git-svn repositories."
+  $GIT svn info >/dev/null 2>/dev/null &&
+    die "$this does not support git-svn repositories."
+}
 
 while true; do
   arg=$1
