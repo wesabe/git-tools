@@ -173,7 +173,8 @@ startReview() {
 
   local change=$1
   local changeref=refs/remotes/changes/${change:(-2)}/$change
-  local patchref=$($GIT rev-parse --symbolic-full-name --all | grep $changeref | sort --reverse | head -n1)
+  local patchref=$($GIT rev-parse --symbolic-full-name --all | grep $changeref | \
+    awk -F'/' 'BEGIN{ maxpn = 0; maxref = "" } { pn = $NF; if (pn > maxpn) { maxpn = pn; maxref = $0 } } END{ print maxref }')
 
   if [ -z "$patchref" ]; then
     die "Unable to find a patch for ±$change"
