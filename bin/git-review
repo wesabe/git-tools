@@ -98,6 +98,9 @@ printUsage() {
   echo "    Applies the latest patch for the change at <change number> on top of master on a"
   echo "    branch named for <change number>, allowing you to review the change."
   echo
+  echo "  update"
+  echo "    Updates the review branch that you're currently on to the latest patch."
+  echo
   echo "  reset"
   echo "    Removes the current change branch created by the 'start' subcommand and switches"
   echo "    back to master."
@@ -263,6 +266,20 @@ rebaseReview() {
   fi
 }
 
+updateReview() {
+  if ! is_review_branch $CURRENT; then
+    warn "$CURRENT is not a review branch"
+    printUsage
+    exit 2
+  fi
+
+  abort_on_bad_repo_state
+
+  local change=${CURRENT:1}
+  resetReview
+  startReview $change
+}
+
 abort_on_bad_repo_state() {
   if ! no_changes; then
     die "You have local changes. Please do something with them before using $this"
@@ -313,6 +330,10 @@ while true; do
       ;;
     rebase)
       rebaseReview $1
+      exit
+      ;;
+    update)
+      updateReview
       exit
       ;;
     *)
