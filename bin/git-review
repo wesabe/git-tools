@@ -38,7 +38,7 @@ git() {
   fi
 
   if [ "$run" = true ]; then
-    eval "$GIT $@"
+    eval "git_output=\$($GIT $@ 2>&1 | tee /dev/tty)"
   fi
 }
 
@@ -149,12 +149,20 @@ pushReview() {
   git push $change_args ||
     die "Could not push your changes for review. Perhaps you need to update first?"
 
+  git_push_output="$git_output"
+
   if [ "$CURRENT" = "master" ]; then
     git reset --hard origin/master ||
       die "Could not reset your master branch to origin/master."
   fi
 
   if [ "$run" = true ]; then
+    url=$(echo "$git_push_output" | grep http | head -n1)
+
+    if [[ ! -z "$BROWSER" && ! -z "$url" ]]; then
+      eval "$BROWSER $url"
+    fi
+
     if [ "$CURRENT" = "master" ]; then
       good "Successfully pushed '$LOG' for review and reset master"
     else
