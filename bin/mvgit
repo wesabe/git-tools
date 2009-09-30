@@ -14,7 +14,7 @@
 git_root=$PWD
 path=""
 
-until [ -d $git_root/.git || "$git_root" = "/" ]; do
+until [[ -d "$git_root/.git" || "$git_root" = "/" ]]; do
   path=`basename $git_root`/$path
   git_root=`dirname $git_root`
 done
@@ -71,6 +71,8 @@ else
     echo
   fi
 fi
+
+echo "Using svn url: $svn_url"
 
 if [ -z "$name" ]; then
   name=`basename $svn_url`
