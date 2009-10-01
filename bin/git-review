@@ -69,6 +69,29 @@ is_review_branch() {
   return 1
 }
 
+get_change_number_from_branch() {
+  if is_review_branch $CURRENT; then
+    CHANGE=${CURRENT:1}
+    if [ $run = true ]; then
+      good "Using change number $CHANGE from branch name"
+      return 0
+    fi
+  fi
+  return 1
+}
+
+patch_count_for_change() {
+  local changeref="refs/remotes/changes/${1:(-2)}/$1"
+  $GIT rev-parse --symbolic-full-name --all | \
+    grep $changeref | \
+    awk 'BEGIN { max=0 }
+               { p=$0;
+                 sub( "^.*/", "", p );
+                 p=int( p );
+                 if ( p>max ) max=p; }
+           END { print max }'
+}
+
 printShortUsage() {
   echo "Usage: $this [<options>] push [<change number>]"
   echo "   or: $this [<options>] <change number>"
@@ -121,12 +144,8 @@ pushReview() {
 
   local change=$1
   if [ -z "$change" ]; then
-    # try to read the change number from the branch name
-    if is_review_branch $CURRENT; then
-      local change=${CURRENT:1}
-      if [ $run = true ]; then
-        good "Using change number $change from branch name"
-      fi
+    if get_change_number_from_branch; then
+      change=$CHANGE
     fi
   fi
 
@@ -223,26 +242,53 @@ resetReview() {
 
 diffPatches() {
   local change=$1
-  if [ "$change" = "" ]; then
-    die "You must specify a changeset (and optionally, patch numbers) to diff"
-  fi
-
   local patch1=$2
   local patch2=$3
-  local changeref=refs/remotes/changes/${change:(-2)}/$change
 
-  if [ "$patch1" != "" ] && [ "$patch2" != "" ]; then
-    local patchref1=$changeref/$patch1
-    local patchref2=$changeref/$patch2
-  else
-    local patchref1=$($GIT rev-parse --symbolic-full-name --all | grep $changeref | sort --reverse | head -n2 | tail -n1)
-    local patchref2=$($GIT rev-parse --symbolic-full-name --all | grep $changeref | sort --reverse | head -n1)
-    if [ "$patchref1" = "$patchref2" ]; then
-      die "Only one patchset--nothing to diff!"
+  if [ -z "$change" ]; then
+    if get_change_number_from_branch; then
+      change=$CHANGE
+    else
+      die "You must specify a changeset (and optionally, patch numbers) to diff"
     fi
   fi
 
-  $GIT diff --src-prefix=$patchref1: --dst-prefix=$patchref2: $patchref1 $patchref2
+  local changeref=refs/remotes/changes/${change:(-2)}/$change
+
+  if [ -z "$patch1" ] || [ -z "$patch2" ]; then
+    local patch2=$(patch_count_for_change $change)
+    local patch1=$((patch2 - 1))
+  fi
+
+  if [ "$patch1" = "$patch2" ]; then
+    die "Only one patchset--nothing to diff!"
+  fi
+
+  local patchref1="$changeref/$patch1"
+  local patchref2="$changeref/$patch2"
+  local branch1="r$change,$patch1"
+  local branch2="r$change,$patch2"
+
+  # create a branch for patch1
+  $GIT checkout -b $branch1 master >/dev/null 2>&1 ||
+    die "Unable to create a new branch '$branch1'"
+  $GIT cherry-pick $patchref1 >/dev/null 2>&1 ||
+    die "Unable to apply ±$branch1 on top of master"
+
+  # create a branch for patch2
+  $GIT checkout -b $branch2 master >/dev/null 2>&1 ||
+    die "Unable to create a new branch '$branch2'"
+  $GIT cherry-pick $patchref2 >/dev/null 2>&1 ||
+    die "Unable to apply ±$branch2 on top of master"
+
+  # actually show the diff
+  $GIT diff --src-prefix=$branch1: --dst-prefix=$branch2: --color $branch1 $branch2 | less -rf
+
+  $GIT checkout "$CURRENT" >/dev/null 2>&1 ||
+    die "Unable to switch back to $CURRENT"
+
+  $GIT branch -D $branch1 $branch2 >/dev/null 2>&1 ||
+    die "Unable to delete temporary patch branches"
 }
 
 rebaseReview() {
