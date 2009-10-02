@@ -356,6 +356,23 @@ updateReview() {
   startReview $change
 }
 
+openReview() {
+  if ! get_change_number_from_branch; then
+    warn "$CURRENT is not a review branch"
+    exit 2
+  fi
+
+  if [[ -z "$BROWSER" ]]; then
+    warn "BROWSER is not set. Sorry."
+    exit 2
+  fi
+
+  if [[ ! -z "$BROWSER" ]]; then
+    eval "$BROWSER http://review.core/$CHANGE"
+    exit 0
+  fi
+}
+
 abort_on_bad_repo_state() {
   if ! no_changes; then
     die "You have local changes. Please do something with them before using $this"
@@ -414,6 +431,10 @@ while true; do
       ;;
     update)
       updateReview
+      exit
+      ;;
+    open)
+      openReview
       exit
       ;;
     *)
