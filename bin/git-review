@@ -124,6 +124,9 @@ printUsage() {
   echo "  update"
   echo "    Updates the review branch that you're currently on to the latest patch."
   echo
+  echo "  approve"
+  echo "    Approves the current patch but does not merge it."
+  echo
   echo "  reset"
   echo "    Removes the current change branch created by the 'start' subcommand and switches"
   echo "    back to master."
@@ -238,6 +241,25 @@ resetReview() {
 
   git checkout master && git branch -D $CURRENT ||
     die "Unable to close the review branch $CURRENT"
+}
+
+approveChange() {
+  local url_line=$($GIT remote show -n changes | grep "URL: " | head -n1)
+  local host_and_project=${url_line# *URL: }
+  local host=${host_and_project%:*}
+  local project=${host_and_project#*:}
+
+  get_change_number_from_branch ||
+    die "Unable to get change number from $CURRENT"
+  local PATCH=$(patch_count_for_change $CHANGE)
+
+  local LOG=$($GIT log --pretty="format:%s" origin/master..HEAD)
+  good "Approving '$LOG'..."
+  ssh $host gerrit approve \
+      --verified=+1 \
+      --code-review=+2 \
+      --project=$project $CHANGE,$PATCH ||
+    die "Unable to approve the commit"
 }
 
 diffPatches() {
@@ -384,6 +406,10 @@ while true; do
       ;;
     rebase)
       rebaseReview $1
+      exit
+      ;;
+    approve)
+      approveChange
       exit
       ;;
     update)
