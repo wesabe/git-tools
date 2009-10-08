@@ -32,15 +32,23 @@ good() {
 #git stuff
 GIT=`which git`
 
+GIT_OUTPUT_FILE="/tmp/git_output$$"
+
 git() {
   if [ "$verbose" = true ]; then
     echo -e "+ ${GREEN}git $@${NO_COLOR}"
   fi
 
   if [ "$run" = true ]; then
-    $GIT $@ 2>&1 | tee /dev/tty > /tmp/git_output
+    $GIT $@ 2>&1 | tee /dev/tty > $GIT_OUTPUT_FILE
     return ${PIPESTATUS[0]}
   fi
+}
+
+trap _cleanup_git_output EXIT
+
+_cleanup_git_output() {
+  rm -f $GIT_OUTPUT_FILE
 }
 
 no_changes () {
