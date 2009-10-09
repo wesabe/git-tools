@@ -202,7 +202,7 @@ pushReview() {
   git push $change_args ||
     die "Could not push your changes for review. Perhaps you need to update first?"
 
-  git_push_output=$(cat $GIT_OUTPUT_FILE)
+  git_push_output=$(test -f $GIT_OUTPUT_FILE && cat $GIT_OUTPUT_FILE)
 
   if [ "$CURRENT" = "$TRACK" ]; then
     git reset --hard $REMOTE/$TRACK ||
