@@ -204,7 +204,7 @@ pushReview() {
 
   git_push_output=$(test -f $GIT_OUTPUT_FILE && cat $GIT_OUTPUT_FILE)
 
-  if [ "$CURRENT" = "$TRACK" ]; then
+  if [ "$CURRENT" = "master" ]; then
     git reset --hard $REMOTE/$TRACK ||
       die "Could not reset your $TRACK branch to $REMOTE/$TRACK."
   fi
@@ -216,7 +216,7 @@ pushReview() {
       eval "$BROWSER $url"
     fi
 
-    if [ "$CURRENT" = "$TRACK" ]; then
+    if [ "$CURRENT" = "master" ]; then
       good "Successfully pushed '$LOG' for review and reset $TRACK"
     else
       good "Successfully pushed '$LOG' for review"
