@@ -297,6 +297,8 @@ approveChange() {
 }
 
 diffPatches() {
+  getBranchInfo
+
   local change=$1
   local patch1=$2
   local patch2=$3
