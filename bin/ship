@@ -2,6 +2,7 @@
 
 CURRENT=$(git symbolic-ref -q HEAD || git rev-parse HEAD)
 CURRENT=${CURRENT#refs/heads/}
+gitdir=$(git rev-parse --git-dir)
 
 # default settings
 explaining=false
@@ -105,8 +106,7 @@ if [ "$CURRENT" != "$TRACK_BRANCH" ]; then
     die "Could not switch to $TRACK_BRANCH. Nothing has been changed yet."
 fi
 
-$GIT svn info >/dev/null 2>/dev/null
-if [ $? = 0 ]; then
+if [ -d "$gitdir/svn" ]; then
   TYPE="git-svn"
 else
   TYPE="git"
