@@ -8,14 +8,18 @@ gitdir=$(git rev-parse --git-dir)
 explain=false
 verbose=true
 run=true
+branch=$CURRENT
 
 printUsage() {
-  echo "usage: $0 [options]"
+  echo "usage: $0 [options] [BRANCH]"
   echo
   echo "  -h  --help                  Show this message"
   echo "  -v  --verbose               Show all commands before running them (default: on)"
   echo "  -q  --quiet                 Don't display commands before running them (default: off)"
   echo "  -e  --explain  --dry-run    Don't actually run commands (default: off)"
+  echo
+  echo "  If BRANCH is given then that branch will be updated and switched to instead of the"
+  echo "  current branch."
   echo
 }
 
@@ -37,10 +41,13 @@ for arg in "$@"; do
       printUsage
       exit
       ;;
-    *)
+    -*)
       echo "$0: unrecognized parameter '$arg'"
       printUsage
       exit 1
+      ;;
+    *)
+      branch=$arg
       ;;
   esac
 done
@@ -105,13 +112,13 @@ else
   trap 'check_stash' EXIT
 fi
 
-REMOTE=`$GIT config branch.$CURRENT.remote`
+REMOTE=`$GIT config branch.$branch.remote`
 
 if [ -z "$REMOTE" ]; then
   REMOTE=origin
 fi
 
-TRACK=`$GIT config branch.$CURRENT.merge`
+TRACK=`$GIT config branch.$branch.merge`
 
 if [ -z "$TRACK" ]; then
   TRACK=refs/heads/master
@@ -140,9 +147,9 @@ else
     die "Could not rebase against $REMOTE/$TRACK_BRANCH. You may need to resolve conflicts."
 fi
 
-if [ "$CURRENT" != "$TRACK_BRANCH" ]; then
-  git checkout $CURRENT ||
-    die "Could not switch back to $CURRENT."
+if [ "$branch" != "$TRACK_BRANCH" ]; then
+  git checkout $branch ||
+    die "Could not switch back to $branch."
   git rebase $TRACK_BRANCH ||
     die "Could not rebase against $TRACK_BRANCH. You may need to resolve conflicts."
 fi
