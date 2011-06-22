@@ -121,12 +121,13 @@ fi
 TRACK=`$GIT config branch.$branch.merge`
 
 if [ -z "$TRACK" ]; then
-  TRACK=refs/heads/master
+  TRACK_BRANCH=master
+else
+  TRACK_BRANCH=${TRACK#refs/heads/}
 fi
 
-TRACK_BRANCH=${TRACK#refs/heads/}
-
-if [ "$CURRENT" != "$TRACK_BRANCH" ]; then
+# if we're not explicitly tracking something, rebase against master
+if [[ -z "$TRACK" && "$CURRENT" != "$TRACK_BRANCH" ]]; then
   git checkout $TRACK_BRANCH ||
     die "Could not switch to $TRACK_BRANCH. Nothing has been changed yet."
 fi
@@ -147,7 +148,7 @@ else
     die "Could not rebase against $REMOTE/$TRACK_BRANCH. You may need to resolve conflicts."
 fi
 
-if [ "$branch" != "$TRACK_BRANCH" ]; then
+if [[ -z "$TRACK" && "$branch" != "$TRACK_BRANCH" ]]; then
   git checkout $branch ||
     die "Could not switch back to $branch."
   git rebase $TRACK_BRANCH ||

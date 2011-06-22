@@ -96,12 +96,12 @@ fi
 TRACK=`$GIT config branch.$CURRENT.merge`
 
 if [ -z "$TRACK" ]; then
-  TRACK=refs/heads/master
+  TRACK_BRANCH=master
+else
+  TRACK_BRANCH=${TRACK#refs/heads/}
 fi
 
-TRACK_BRANCH=${TRACK#refs/heads/}
-
-if [ "$CURRENT" != "$TRACK_BRANCH" ]; then
+if [[ -z "$TRACK" && "$CURRENT" != "$TRACK_BRANCH" ]]; then
   git checkout $TRACK_BRANCH ||
     die "Could not switch to $TRACK_BRANCH. Nothing has been changed yet."
 fi
@@ -118,15 +118,15 @@ if [ "$TYPE" = "git-svn" ]; then
   git svn dcommit ||
     die "Failed to commit to the upstream Subversion server. Check your network connection."
 else
-  if [ "$CURRENT" != "$TRACK_BRANCH" ]; then
+  if [[ -z "$TRACK" && "$CURRENT" != "$TRACK_BRANCH" ]]; then
     git merge $CURRENT ||
       die "Could not merge branch $CURRENT into $TRACK_BRANCH. You may need to resolve conflicts."
   fi
-  git push $REMOTE $TRACK_BRANCH ||
+  git push $REMOTE $CURRENT:$TRACK_BRANCH ||
     die "Could not push changes to $REMOTE/$TRACK_BRANCH. Check your network connection."
 fi
 
-if [ "$CURRENT" != "$TRACK_BRANCH" ]; then
+if [[ -z "$TRACK" && "$CURRENT" != "$TRACK_BRANCH" ]]; then
   git checkout $CURRENT ||
     die "Could not switch back to $CURRENT from $TRACK_BRANCH."
 fi
