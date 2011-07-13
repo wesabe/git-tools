@@ -122,7 +122,13 @@ else
     git merge $CURRENT ||
       die "Could not merge branch $CURRENT into $TRACK_BRANCH. You may need to resolve conflicts."
   fi
-  git push $REMOTE $CURRENT:$TRACK_BRANCH ||
+
+  if [[ "$CURRENT" == "$TRACK_BRANCH" ]]; then
+    MAPPING="$CURRENT"
+  else
+    MAPPING="$CURRENT:$TRACK_BRANCH"
+  fi
+  git push $REMOTE "$MAPPING" ||
     die "Could not push changes to $REMOTE/$TRACK_BRANCH. Check your network connection."
 fi
 
