@@ -95,6 +95,42 @@ check_stash() {
   fi
 }
 
+switch_to_tracking() {
+  if [[ -z "$TRACK" && "$CURRENT" != "$TRACK_BRANCH" ]]; then
+    switch_to_branch $TRACK_BRANCH
+  fi
+}
+
+switch_to_branch() {
+  local current
+  current=$($GIT symbolic-ref -q HEAD || $GIT rev-parse HEAD)
+  current=${current#refs/heads/}
+
+  if [[ $current != $1 ]]; then
+    git checkout $1 ||
+      die "Could not switch to $1."
+  fi
+}
+
+are_same_ref() {
+  lhs=`$GIT rev-parse $1`
+  rhs=`$GIT rev-parse $2`
+
+  if [[ $lhs == $rhs ]]; then
+    return 0
+  else
+    return 1
+  fi
+}
+
+different_refs() {
+  if are_same_ref $1 $2; then
+    return 1
+  else
+    return 0
+  fi
+}
+
 # initial state
 stashed=false
 
@@ -121,15 +157,10 @@ fi
 TRACK=`$GIT config branch.$branch.merge`
 
 if [ -z "$TRACK" ]; then
+  # if we're not explicitly tracking something, rebase against master
   TRACK_BRANCH=master
 else
   TRACK_BRANCH=${TRACK#refs/heads/}
-fi
-
-# if we're not explicitly tracking something, rebase against master
-if [[ -z "$TRACK" && "$CURRENT" != "$TRACK_BRANCH" ]]; then
-  git checkout $TRACK_BRANCH ||
-    die "Could not switch to $TRACK_BRANCH. Nothing has been changed yet."
 fi
 
 if [ -d "$gitdir/svn" ]; then
@@ -139,18 +170,26 @@ else
 fi
 
 if [ "$TYPE" = "git-svn" ]; then
+  switch_to_tracking
+
   git svn rebase ||
     die "Could not complete the rebase from the upstream Subversion server."
 else
   git fetch $REMOTE ||
     die "Could not fetch updates from $REMOTE. Check your network connection."
-  git rebase $REMOTE/$TRACK_BRANCH ||
-    die "Could not rebase against $REMOTE/$TRACK_BRANCH. You may need to resolve conflicts."
+
+  if different_refs $TRACK_BRANCH $REMOTE/$TRACK_BRANCH; then
+    switch_to_tracking
+
+    if different_refs HEAD $REMOTE/$TRACK_BRANCH; then
+      git rebase $REMOTE/$TRACK_BRANCH ||
+        die "Could not rebase against $REMOTE/$TRACK_BRANCH. You may need to resolve conflicts."
+    fi
+  fi
 fi
 
 if [[ -z "$TRACK" && "$branch" != "$TRACK_BRANCH" ]]; then
-  git checkout $branch ||
-    die "Could not switch back to $branch."
+  switch_to_branch $branch
   git rebase $TRACK_BRANCH ||
     die "Could not rebase against $TRACK_BRANCH. You may need to resolve conflicts."
 fi
