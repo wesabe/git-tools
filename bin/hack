@@ -3,6 +3,7 @@
 CURRENT=$(git symbolic-ref -q HEAD || git rev-parse HEAD)
 CURRENT=${CURRENT#refs/heads/}
 gitdir=$(git rev-parse --git-dir)
+project=$(basename $(dirname "$gitdir"))
 
 # default settings
 explain=false
@@ -133,6 +134,7 @@ different_refs() {
 
 # initial state
 stashed=false
+noop=true
 
 if [ "$explain" = true ]; then
   echo "These are the commands that would be run:"
@@ -182,6 +184,7 @@ else
     switch_to_tracking
 
     if different_refs HEAD $REMOTE/$TRACK_BRANCH; then
+      noop=false
       git rebase $REMOTE/$TRACK_BRANCH ||
         die "Could not rebase against $REMOTE/$TRACK_BRANCH. You may need to resolve conflicts."
     fi
@@ -189,6 +192,7 @@ else
 fi
 
 if [[ -z "$TRACK" && "$branch" != "$TRACK_BRANCH" ]]; then
+  noop=false
   switch_to_branch $branch
   git rebase $TRACK_BRANCH ||
     die "Could not rebase against $TRACK_BRANCH. You may need to resolve conflicts."
@@ -201,5 +205,9 @@ if [ "$stashed" = true ]; then
 fi
 
 if [ "$run" = true ]; then
-  good "Successfully updated `basename $PWD`"
+  if [ "$noop" = false ]; then
+    good "Successfully updated $project."
+  else
+    good "$project already up to date."
+  fi
 fi
