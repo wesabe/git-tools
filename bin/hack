@@ -3,7 +3,12 @@
 CURRENT=$(git symbolic-ref -q HEAD || git rev-parse HEAD)
 CURRENT=${CURRENT#refs/heads/}
 gitdir=$(git rev-parse --git-dir)
-project=$(basename $(dirname "$gitdir"))
+rootdir=$(dirname "$gitdir")
+
+if [ "$rootdir" = "." ]; then
+  rootdir=$PWD
+fi
+project=$(basename "$rootdir")
 
 # default settings
 explain=false
