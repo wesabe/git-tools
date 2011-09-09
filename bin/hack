@@ -95,6 +95,26 @@ no_changes () {
   $GIT diff-files --quiet
 }
 
+stash_changes_if_needed() {
+  if no_changes; then
+    stashed=false
+  else
+    git stash ||
+      die "Could not stash your local changes. Something must be really wrong."
+    stashed=true
+
+    trap 'check_stash' EXIT
+  fi
+}
+
+pop_stash_if_needed() {
+  if [ "$stashed" = true ]; then
+    git stash apply ||
+      die "Could not apply your stashed changes over the updates."
+    stashed=false
+  fi
+}
+
 check_stash() {
   if [ "$stashed" = true ]; then
     warn "Your stashed changes were not applied because an error occurred. Don't panic. They are not lost. Look for them in \"git stash list\"."
@@ -145,16 +165,6 @@ if [ "$explain" = true ]; then
   echo "These are the commands that would be run:"
 fi
 
-if no_changes; then
-  stashed=false
-else
-  git stash ||
-    die "Could not stash your local changes. Something must be really wrong."
-  stashed=true
-
-  trap 'check_stash' EXIT
-fi
-
 REMOTE=`$GIT config branch.$branch.remote`
 
 if [ -z "$REMOTE" ]; then
@@ -177,7 +187,10 @@ else
 fi
 
 if [ "$TYPE" = "git-svn" ]; then
+  noop=false
+
   switch_to_tracking
+  stash_changes_if_needed
 
   git svn rebase ||
     die "Could not complete the rebase from the upstream Subversion server."
@@ -185,7 +198,8 @@ else
   git fetch $REMOTE ||
     die "Could not fetch updates from $REMOTE. Check your network connection."
 
-  if different_refs $TRACK_BRANCH $REMOTE/$TRACK_BRANCH; then
+  if different_refs $branch $REMOTE/$TRACK_BRANCH; then
+    stash_changes_if_needed
     switch_to_tracking
 
     if different_refs HEAD $REMOTE/$TRACK_BRANCH; then
@@ -198,16 +212,15 @@ fi
 
 if [[ -z "$TRACK" && "$branch" != "$TRACK_BRANCH" ]]; then
   noop=false
+
   switch_to_branch $branch
+  stash_changes_if_needed
+
   git rebase $TRACK_BRANCH ||
     die "Could not rebase against $TRACK_BRANCH. You may need to resolve conflicts."
 fi
 
-if [ "$stashed" = true ]; then
-  git stash apply ||
-    die "Could not apply your stashed changes over the updates."
-  stashed=false
-fi
+pop_stash_if_needed
 
 if [ "$run" = true ]; then
   if [ "$noop" = false ]; then
