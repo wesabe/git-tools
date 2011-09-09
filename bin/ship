@@ -5,9 +5,7 @@ CURRENT=${CURRENT#refs/heads/}
 gitdir=$(git rev-parse --git-dir)
 
 # default settings
-explaining=false
 verbose=true
-run=true
 
 printUsage() {
   echo "usage: $0 [options] [remote]"
@@ -15,7 +13,6 @@ printUsage() {
   echo "  -h  --help                  Show this message"
   echo "  -v  --verbose               Show all commands before running them (default: on)"
   echo "  -q  --quiet                 Don't display commands before running them (default: off)"
-  echo "  -e  --explain  --dry-run    Don't actually run commands (default: off)"
   echo
   echo "  remote                      Which remote we should push to (default: origin)"
   echo
@@ -24,11 +21,6 @@ printUsage() {
 for arg in "$@"; do
   case $arg
   in
-    -e | --explain | --dry-run)
-      explain=true
-      verbose=true
-      run=false
-      ;;
     -v | --verbose)
       verbose=true
       ;;
@@ -76,14 +68,8 @@ git() {
     echo -e "+ ${GREEN}git $@${NO_COLOR}"
   fi
 
-  if [ "$run" = true ]; then
-    eval "$GIT $@"
-  fi
+  eval "$GIT $@"
 }
-
-if [ "$explain" = true ]; then
-  echo "These are the commands that would be run:"
-fi
 
 if [ -z "$REMOTE" ]; then
   REMOTE=`$GIT config branch.$CURRENT.remote`
@@ -142,6 +128,4 @@ if [ "$TYPE" = "git-svn" ]; then
     die "Could not complete the rebase from the upstream Subversion server."
 fi
 
-if [ "$run" = true ]; then
-  good "Successfully shipped your changes from $CURRENT to $REMOTE"
-fi
+good "Successfully shipped your changes from $CURRENT to $REMOTE"

@@ -11,9 +11,7 @@ fi
 project=$(basename "$rootdir")
 
 # default settings
-explain=false
 verbose=true
-run=true
 branch=$CURRENT
 
 printUsage() {
@@ -22,7 +20,6 @@ printUsage() {
   echo "  -h  --help                  Show this message"
   echo "  -v  --verbose               Show all commands before running them (default: on)"
   echo "  -q  --quiet                 Don't display commands before running them (default: off)"
-  echo "  -e  --explain  --dry-run    Don't actually run commands (default: off)"
   echo
   echo "  If BRANCH is given then that branch will be updated and switched to instead of the"
   echo "  current branch."
@@ -32,11 +29,6 @@ printUsage() {
 for arg in "$@"; do
   case $arg
   in
-    -e | --explain | --dry-run)
-      explain=true
-      verbose=true
-      run=false
-      ;;
     -v | --verbose)
       verbose=true
       ;;
@@ -85,9 +77,7 @@ git() {
     echo -e "+ ${GREEN}git $@${NO_COLOR}"
   fi
 
-  if [ "$run" = true ]; then
-    eval "$GIT $@"
-  fi
+  eval "$GIT $@"
 }
 
 no_changes () {
@@ -161,10 +151,6 @@ different_refs() {
 stashed=false
 noop=true
 
-if [ "$explain" = true ]; then
-  echo "These are the commands that would be run:"
-fi
-
 REMOTE=`$GIT config branch.$branch.remote`
 
 if [ -z "$REMOTE" ]; then
@@ -222,10 +208,8 @@ fi
 
 pop_stash_if_needed
 
-if [ "$run" = true ]; then
-  if [ "$noop" = false ]; then
-    good "Successfully updated $project."
-  else
-    good "$project already up to date."
-  fi
+if [ "$noop" = false ]; then
+  good "Successfully updated $project."
+else
+  good "$project already up to date."
 fi
