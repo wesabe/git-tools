@@ -184,7 +184,8 @@ else
   git fetch $REMOTE ||
     die "Could not fetch updates from $REMOTE. Check your network connection."
 
-  if different_refs $branch $REMOTE/$TRACK_BRANCH; then
+  mergebase=$($GIT merge-base $branch $REMOTE/$TRACK_BRANCH)
+  if different_refs $mergebase $REMOTE/$TRACK_BRANCH; then
     stash_changes_if_needed
     switch_to_tracking
 
