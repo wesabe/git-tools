@@ -5,6 +5,8 @@ CURRENT=${CURRENT#refs/heads/}
 gitdir=$(git rev-parse --git-dir)
 rootdir=$(dirname "$gitdir")
 
+logfile=/tmp/hack-$$.log
+
 if [ "$rootdir" = "." ]; then
   rootdir=$PWD
 fi
@@ -77,8 +79,10 @@ git() {
     echo -e "+ ${GREEN}git $@${NO_COLOR}"
   fi
 
-  eval "$GIT $@"
+  eval "$GIT $@ | tee $logfile"
 }
+
+trap 'cleanup' EXIT
 
 no_changes () {
   $GIT diff-index --quiet --cached HEAD -- &&
@@ -91,9 +95,13 @@ stash_changes_if_needed() {
   else
     git stash ||
       die "Could not stash your local changes. Something must be really wrong."
-    stashed=true
 
-    trap 'check_stash' EXIT
+    if cat $logfile | grep "No local changes to save" >/dev/null; then
+      # nothing to stash, no_changes lied to us
+      stashed=false
+    else
+      stashed=true
+    fi
   fi
 }
 
@@ -105,10 +113,11 @@ pop_stash_if_needed() {
   fi
 }
 
-check_stash() {
+cleanup() {
   if [ "$stashed" = true ]; then
     warn "Your stashed changes were not applied because an error occurred. Don't panic. They are not lost. Look for them in \"git stash list\"."
   fi
+  rm -f $logfile
 }
 
 switch_to_tracking() {
