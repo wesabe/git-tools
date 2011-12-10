@@ -82,7 +82,9 @@ fi
 TRACK=`$GIT config branch.$CURRENT.merge`
 
 if [ -z "$TRACK" ]; then
-  TRACK_BRANCH=master
+  $GIT config branch.$CURRENT.remote "$REMOTE"
+  $GIT config branch.$CURRENT.merge "refs/heads/$CURRENT"
+  TRACK_BRANCH="$CURRENT"
 else
   TRACK_BRANCH=${TRACK#refs/heads/}
 fi
