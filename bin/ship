@@ -6,6 +6,7 @@ gitdir=$(git rev-parse --git-dir)
 
 # default settings
 verbose=true
+forceopt=
 
 printUsage() {
   echo "usage: $0 [options] [remote]"
@@ -13,8 +14,9 @@ printUsage() {
   echo "  -h  --help                  Show this message"
   echo "  -v  --verbose               Show all commands before running them (default: on)"
   echo "  -q  --quiet                 Don't display commands before running them (default: off)"
+  echo "  -f  --force                 Force push the current branch (default: off)"
   echo
-  echo "  remote                      Which remote we should push to (default: origin)"
+  echo "  remote                      Which remote we should push to (default: tracking remote or origin)"
   echo
 }
 
@@ -26,6 +28,9 @@ for arg in "$@"; do
       ;;
     -q | --quiet)
       verbose=false
+      ;;
+    -f | --force)
+      forceopt="-f"
       ;;
     -h | --help)
       printUsage
@@ -116,7 +121,7 @@ else
   else
     MAPPING="$CURRENT:$TRACK_BRANCH"
   fi
-  git push $REMOTE "$MAPPING" ||
+  git push $forceopt $REMOTE "$MAPPING" ||
     die "Could not push changes to $REMOTE/$TRACK_BRANCH. Check your network connection."
 fi
 
