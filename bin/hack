@@ -85,8 +85,7 @@ git() {
 trap 'cleanup' EXIT
 
 no_changes () {
-  $GIT diff-index --quiet --cached HEAD -- &&
-  $GIT diff-files --quiet
+  $GIT diff --no-ext-diff --quiet --exit-code
 }
 
 stash_changes_if_needed() {
